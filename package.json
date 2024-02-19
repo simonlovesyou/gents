@@ -1,0 +1,16 @@
+{
+  "name": "@gents/gents",
+  "packageManager": "bun@1.0.33",
+  "version": "0.0.1",
+  "description": "Generate utilities to generate data that adheres to typescript types.",
+  "keywords": [],
+  "workspaces": [
+    "packages/*"
+  ],
+  "author": {
+    "email": "simonljohansson92@gmail.com",
+    "url": "https://github.com/simonlovesyou",
+    "name": "Simon Johansson"
+  },
+  "license": "MIT"
+}

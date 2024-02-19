@@ -1,0 +1,27 @@
+{
+  "name": "@gents/parser",
+  "version": "0.0.1",
+  "type": "module",
+  "files": [
+    "src/index.ts"
+  ],
+  "packageManager": "pnpm@8.15.3",
+  "description": "",
+  "main": "index.js",
+  "author": {
+    "email": "simonljohansson92@gmail.com",
+    "url": "https://github.com/simonlovesyou",
+    "name": "Simon Johansson"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.14.8",
+    "jest": "^29.7.0",
+    "ts-dedent": "^2.2.0",
+    "ts-jest": "^29.1.5",
+    "ts-morph": "21.0.1",
+    "tsup": "8.0.2",
+    "typescript": "5.3.3"
+  }
+}
