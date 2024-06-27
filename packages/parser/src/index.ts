@@ -1,13 +1,16 @@
 import {
   InterfaceDeclaration,
   Node,
+  ObjectFlags,
   Program,
   Project,
   SourceFile,
   Symbol,
+  SymbolFlags,
   SyntaxKind,
   Type,
   TypeAliasDeclaration,
+  TypeFlags,
   TypeFormatFlags,
 } from "ts-morph";
 
@@ -21,39 +24,59 @@ const getNameFromNode = (node: Node) => {
     : "unknown";
 };
 
+const findType = (type: Type) => {
+  const keys = [
+    "isAnonymous",
+    "isAny",
+    "isNever",
+    "isArray",
+    "isReadonlyArray",
+    "isTemplateLiteral",
+    "isBoolean",
+    "isString",
+    "isNumber",
+    "isLiteral",
+    "isBooleanLiteral",
+    "isEnumLiteral",
+    "isNumberLiteral",
+    "isStringLiteral",
+    "isClass",
+    "isClassOrInterface",
+    "isEnum",
+    "isInterface",
+    "isObject",
+    "isTypeParameter",
+    "isTuple",
+    "isUnion",
+    "isIntersection",
+    "isUnionOrIntersection",
+    "isUnknown",
+    "isNull",
+    "isUndefined",
+    "isVoid",
+  ] as const;
+  return keys
+    .filter((key) => type[key]())
+    .reduce(
+      (acc, key) => ({ ...acc, [key]: true }),
+      {} as Partial<Record<(typeof keys)[number], boolean>>
+    );
+};
+
+const isTypeReference = (type: Type) =>
+  (type.getObjectFlags() & ObjectFlags.Reference) !== 0;
+
 const parsePropertySymbol = (property: Symbol): any => {
   const escapedName = property.getEscapedName();
-  try {
-    const value = property
-      .getValueDeclarationOrThrow()
-      .getType()
-      .getApparentType();
+  console.log(`Parsing property "${escapedName}"`);
 
-    const [declaration] =
-      property
-        .getValueDeclarationOrThrow()
-        .getType()
-        .getSymbol()
-        ?.getDeclarations() ?? [];
+  const propertyType = property.getValueDeclarationOrThrow().getType();
 
-    if (declaration) {
-      return {
-        name: escapedName,
-        type: {
-          type: "reference" as const,
-          reference: getNameFromNode(declaration),
-        },
-      };
-    }
-
-    return {
-      name: escapedName,
-      type: parseType(property.getValueDeclarationOrThrow().getType()),
-    };
-  } catch (error) {
-    // @ts-expect-error asdökfjnalsdkjnf a
-    return { error, text: property?.getText?.() };
-  }
+  return {
+    name: escapedName,
+    type: parseType(propertyType),
+    optional: (property.getFlags() & SymbolFlags.Optional) !== 0,
+  };
 };
 
 const formatFlags =
@@ -65,17 +88,17 @@ const formatFlags =
 const parseType = (type: Type, node?: Node, program?: Program): any => {
   const typeChecker = program?.getTypeChecker();
   const aliasSymbol = type.getAliasSymbol();
-  const typeSymbol = node?.getSymbol();
-  const typeAtLocation =
-    node && typeSymbol && typeSymbol.getTypeAtLocation(node);
+  const symbol = type?.getSymbol();
+  const typeAtLocation = node && symbol && symbol.getTypeAtLocation(node);
   const apparentType = type.getApparentType();
-  const apparentAliasSymbol = type.getApparentType().getAliasSymbol();
-  const signature = typeSymbol && typeChecker?.getAliasedSymbol(typeSymbol);
+  const apparentTypeAliasSymbol = type.getApparentType().getAliasSymbol();
+  const apparentTypeSymbol = type.getApparentType().getSymbol();
+  const aliasedSymbol = symbol && typeChecker?.getAliasedSymbol(symbol);
   const symbolLocation =
     (typeChecker &&
-      typeSymbol &&
+      symbol &&
       node &&
-      typeChecker.getTypeOfSymbolAtLocation(typeSymbol, node)) ??
+      typeChecker.getTypeOfSymbolAtLocation(symbol, node)) ??
     null;
   console.log("=====================================================");
   console.log(`Parsing type with text: "${type.getText()}"`);
@@ -83,26 +106,29 @@ const parseType = (type: Type, node?: Node, program?: Program): any => {
   node && console.log(`Parsing node: "${node.getFullText()}"`);
 
   console.log({
-    apparent: {
-      literal: apparentType.isLiteral(),
-      object: apparentType.isObject(),
-      anon: apparentType.isAnonymous(),
-      string: apparentType.isString(),
-    },
-    type: {
-      literal: type.isLiteral(),
-      object: type.isObject(),
-      anon: type.isAnonymous(),
-      string: type.isString(),
-    },
+    apparent: findType(apparentType),
+    type: findType(type),
+    kindName: node?.getKindName(),
+    aliasSymbol,
+    typeAtLocation: typeAtLocation?.getText(),
+    aliasedSymbol,
+    apparentTypeAliasSymbol,
+    apparentTypeSymbol,
+    referenceFlag:
+      type.getTargetType()?.getObjectFlags() &&
+      type.getTargetType()!.getObjectFlags() & ObjectFlags.Reference,
+    apparentReferenceFlag:
+      apparentType.getObjectFlags() & ObjectFlags.Reference,
+    symbol,
+    node,
   });
 
   const typeString =
-    typeSymbol && node && typeChecker?.getTypeText(type, node, formatFlags);
+    symbol && node && typeChecker?.getTypeText(type, node, formatFlags);
 
-  if (aliasSymbol) {
+  if (aliasSymbol && node === undefined) {
     const [aliasDeclaration] = aliasSymbol.getDeclarations();
-    const [typeDeclaration] = typeSymbol?.getDeclarations() ?? [];
+    const [typeDeclaration] = symbol?.getDeclarations() ?? [];
 
     if (typeDeclaration && aliasDeclaration !== typeDeclaration) {
       return {
@@ -113,18 +139,60 @@ const parseType = (type: Type, node?: Node, program?: Program): any => {
   }
 
   if (typeString && getNameFromNode(node) !== typeString) {
+    if (typeString === "{}") {
+      return {
+        type: "object",
+        properties: [],
+      };
+    }
     return {
       type: "alias",
       alias: typeString,
     };
   }
 
+  if (type.isArray()) {
+    console.log("array ", type.getArrayElementTypeOrThrow().getText());
+    return {
+      type: "array" as const,
+      readonly: false,
+      elements: parseType(type.getArrayElementTypeOrThrow()),
+    };
+  }
+  console.log(
+    "Is type reference ",
+    isTypeReference(type),
+    symbol,
+    symbol && symbol.getFlags() & SymbolFlags.TypeAliasExcludes
+  );
+  if ((isTypeReference(type) || symbol) && node === undefined) {
+    const [declaration] = type.getSymbolOrThrow().getDeclarations() ?? [];
+    if (declaration) {
+      return {
+        type: "reference" as const,
+        reference: getNameFromNode(declaration),
+      };
+    }
+  }
   if (type.isObject()) {
     return {
       type: "object" as const,
       properties: type.getProperties().map(parsePropertySymbol),
       // apparentProperties: type.getApparentProperties().map(parsePropertySymbol),
     };
+  }
+
+  if (symbol) {
+    const [declaration, ...rest] = symbol.getDeclarations();
+    console.log({ rest, declaration, node });
+
+    if (node === undefined && declaration) {
+      console.log("First reference parse");
+      return {
+        type: "reference",
+        reference: getNameFromNode(declaration),
+      };
+    }
   }
 
   if (type.isAnonymous()) {
@@ -137,14 +205,6 @@ const parseType = (type: Type, node?: Node, program?: Program): any => {
   if (type.isAny()) {
     return {
       type: "any" as const,
-    };
-  }
-
-  if (type.isArray()) {
-    return {
-      type: "array" as const,
-      readonly: false,
-      elements: type.getArrayElementTypeOrThrow(),
     };
   }
 
@@ -358,8 +418,6 @@ const parseSourceFile = (sourceFile: SourceFile, program: Program) => {
 export function codegen(project: Project) {
   const sourceFiles = project.getSourceFiles();
   const program = project.getProgram();
-
-  // console.log(sourceFiles.map((sourceFile) => sourceFile.getFullText()));
 
   return sourceFiles.map((sourceFile) => parseSourceFile(sourceFile, program));
 }

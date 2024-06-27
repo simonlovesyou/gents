@@ -8,6 +8,9 @@
   "packageManager": "pnpm@8.15.3",
   "description": "",
   "main": "index.js",
+  "scripts": {
+    "test": "jest src/*.spec.ts"
+  },
   "author": {
     "email": "simonljohansson92@gmail.com",
     "url": "https://github.com/simonlovesyou",
