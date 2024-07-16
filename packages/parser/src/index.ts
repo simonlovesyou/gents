@@ -8,6 +8,7 @@ import {
   Symbol,
   SymbolFlags,
   SyntaxKind,
+  ts,
   Type,
   TypeAliasDeclaration,
   TypeFlags,
@@ -74,6 +75,7 @@ const parsePropertySymbol = (property: Symbol) => {
   const propertyType = property.getValueDeclarationOrThrow().getType()
 
   return {
+    type: "objectProperty" as const,
     name: escapedName,
     property: parseType(propertyType),
     optional: (property.getFlags() & SymbolFlags.Optional) !== 0,
@@ -86,30 +88,33 @@ const formatFlags =
   TypeFormatFlags.UseFullyQualifiedType |
   TypeFormatFlags.WriteTypeArgumentsOfSignature
 
-type Alias = {
+export type AliasEntity = {
   type: "alias"
   alias: string
 }
-type Reference = {
+export type ReferenceEntity = {
   type: "reference"
   reference: string
 }
 
-type EmptyObject = {
+export type EmptyObjectEntity = {
   type: "object"
   properties: []
 }
 
-type Object = {
-  type: "object"
-  properties: Array<{
-    name: string
-    property: Entity
-    optional: boolean
-  }>
+export type ObjectPropertyEntity = {
+  type: "objectProperty"
+  name: string
+  property: Exclude<Entity, DeclarationEntity>
+  optional: boolean
 }
 
-type ArrayEntity =
+export type ObjectEntity = {
+  type: "object"
+  properties: Array<ObjectPropertyEntity>
+}
+
+export type ArrayEntity =
   | {
       type: "array"
       readonly: boolean
@@ -123,40 +128,46 @@ type ArrayEntity =
       elements: Entity
     }
 
-type Anonymous = {
+export type AnonymousEntity = {
   type: "anonymous"
 }
-type Any = {
+export type AnyEntity = {
   type: "any"
 }
-type Boolean = {
+export type BooleanEntity = {
   type: "boolean"
 }
-type BooleanLiteral = {
+export type BooleanLiteralEntity = {
   type: "booleanLiteral"
   value: boolean
 }
-type Number = {
+export type NumberEntity = {
   type: "number"
 }
-type String = {
+export type DeclarationEntity = {
+  type: "declaration"
+  declaration: Exclude<Entity, DeclarationEntity>
+  name: string
+  exported: boolean
+}
+export type StringEntity = {
   type: "string"
 }
-type EnumLiteral = {
+export type EnumLiteralEntity = {
   type: "enumLiteral"
 }
-type Never = {
+export type NeverEntity = {
   type: "never"
 }
-type Literal = {
+export type LiteralEntity = {
   type: "literal"
   value: null | number | string | PseudoBigInt | undefined
 }
-type Union = {
+export type UnionEntity = {
   type: "union"
   values: Array<Entity>
 }
-type Enum = {
+export type EnumEntity = {
   type: "enum"
   properties: Array<{
     name: string
@@ -164,38 +175,44 @@ type Enum = {
     optional: boolean
   }>
 }
-type Unknown = {
+export type UnknownEntity = {
   type: "unknown"
 }
-type Utility = {
+export type UtilityEntity = {
   type: "utility"
 }
-type Intersection = {
+export type IntersectionEntity = {
   type: "intersection"
 }
 
-type Entity =
-  | Alias
-  | Anonymous
-  | Any
+export type Entity =
+  | AliasEntity
+  | AnonymousEntity
+  | AnyEntity
   | ArrayEntity
-  | Boolean
-  | BooleanLiteral
-  | EmptyObject
-  | Enum
-  | EnumLiteral
-  | Intersection
-  | Literal
-  | Never
-  | Number
-  | Object
-  | Reference
-  | String
-  | Union
-  | Unknown
-  | Utility
+  | BooleanEntity
+  | BooleanLiteralEntity
+  | DeclarationEntity
+  | EmptyObjectEntity
+  | EnumEntity
+  | EnumLiteralEntity
+  | IntersectionEntity
+  | LiteralEntity
+  | NeverEntity
+  | NumberEntity
+  | ObjectEntity
+  | ReferenceEntity
+  | StringEntity
+  | UnionEntity
+  | UnknownEntity
+  | UtilityEntity
+  | ObjectPropertyEntity
 
-const parseType = (type: Type, node?: Node, program?: Program): Entity => {
+const parseType = (
+  type: Type,
+  node?: Node,
+  program?: Program
+): Exclude<Entity, DeclarationEntity> => {
   const typeChecker = program?.getTypeChecker()
   const aliasSymbol = type.getAliasSymbol()
   const symbol = type?.getSymbol()
@@ -205,40 +222,53 @@ const parseType = (type: Type, node?: Node, program?: Program): Entity => {
   const apparentTypeSymbol = type.getApparentType().getSymbol()
   const aliasedSymbol = symbol && typeChecker?.getAliasedSymbol(symbol)
 
-  console.log("=====================================================")
-  console.log(`Parsing type with text: "${type.getText()}"`)
-  console.log(`Parsing with apparenty type: "${apparentType.getText()}"`)
-  node && console.log(`Parsing node: "${node.getFullText()}"`)
+  process.env.NODE_ENV === "test" &&
+    console.log("=====================================================")
+  process.env.NODE_ENV === "test" &&
+    console.log(`Parsing type with text: "${type.getText()}"`)
+  process.env.NODE_ENV === "test" &&
+    console.log(`Parsing with apparenty type: "${apparentType.getText()}"`)
+  process.env.NODE_ENV === "test" &&
+    node &&
+    console.log(`Parsing node: "${node.getFullText()}"`)
 
-  console.log({
-    apparent: findType(apparentType),
-    type: findType(type),
-    kindName: node?.getKindName(),
-    aliasSymbol,
-    typeAtLocation: typeAtLocation?.getText(),
-    aliasedSymbol,
-    apparentTypeAliasSymbol,
-    apparentTypeSymbol,
-    referenceFlag:
-      type.getTargetType()?.getObjectFlags() &&
-      type.getTargetType()!.getObjectFlags() & ObjectFlags.Reference,
-    apparentReferenceFlag:
-      apparentType.getObjectFlags() & ObjectFlags.Reference,
-    symbol,
-    node,
-  })
+  process.env.NODE_ENV === "test" &&
+    console.log({
+      apparent: findType(apparentType),
+      type: findType(type),
+      kindName: node?.getKindName(),
+      aliasSymbol,
+      typeAtLocation: typeAtLocation?.getText(),
+      aliasedSymbol,
+      apparentTypeAliasSymbol,
+      apparentTypeSymbol,
+      targetTypeObjectFlags: type.getTargetType()?.getObjectFlags(),
+      apparentTypeObjectFlags: apparentType.getObjectFlags(),
+      symbol,
+      node,
+      flags: type.getFlags(),
+      objectFlags: type.getObjectFlags(),
+    })
 
   const typeString =
     symbol && node && typeChecker?.getTypeText(type, node, formatFlags)
 
   if (aliasSymbol && node === undefined) {
-    const [aliasDeclaration] = aliasSymbol.getDeclarations()
-    const [typeDeclaration] = symbol?.getDeclarations() ?? []
+    const aliasDeclarations = aliasSymbol.getDeclarations()
+    const declarations = symbol?.getDeclarations() ?? []
 
-    if (typeDeclaration && aliasDeclaration !== typeDeclaration) {
+    // console.log({ aliasDeclarations, typeDeclaration, rest })
+
+    const matchingDeclaration = declarations.find((declaration) =>
+      aliasDeclarations.some(
+        (aliasDeclaration) => aliasDeclaration !== declaration
+      )
+    )
+
+    if (!matchingDeclaration) {
       return {
         type: "alias" as const,
-        alias: getNameFromNode(aliasDeclaration!),
+        alias: aliasSymbol.getEscapedName(),
       }
     }
   }
@@ -257,8 +287,22 @@ const parseType = (type: Type, node?: Node, program?: Program): Entity => {
   }
 
   if (type.isTuple()) {
-    console.log(type.getTargetTypeOrThrow().getTargetTypeOrThrow())
-    const elements = type.getTupleElements()
+    const tupleIndexes = type.getTupleElements().map((_, index) => `${index}`)
+
+    process.env.NODE_ENV === "test" &&
+      console.log(
+        type.getTargetTypeOrThrow().getFlags(),
+        type.getTargetTypeOrThrow().getObjectFlags(),
+        type.compilerType
+          .getProperties()
+          .filter((property) =>
+            tupleIndexes.includes(property.escapedName as string)
+          )
+          .map(
+            (typeSymbol) => (typeSymbol.getFlags() & SymbolFlags.Optional) !== 0
+          )
+      )
+
     return {
       type: "array",
       tuple: true,
@@ -304,7 +348,6 @@ const parseType = (type: Type, node?: Node, program?: Program): Entity => {
     const [declaration, ...rest] = symbol.getDeclarations()
 
     if (node === undefined && declaration) {
-      console.log("First reference parse")
       return {
         type: "reference",
         reference: getNameFromNode(declaration),
@@ -465,20 +508,25 @@ const parseType = (type: Type, node?: Node, program?: Program): Entity => {
 const parseTypeDeclaration = (
   typeDeclaration: TypeAliasDeclaration | InterfaceDeclaration,
   program: Program
-) => {
+): DeclarationEntity => {
   const type = typeDeclaration.getType()
+
+  const exportKeyword = typeDeclaration.getExportKeyword()
 
   if (typeDeclaration.isKind(SyntaxKind.InterfaceDeclaration)) {
     return {
+      type: "declaration",
       name: typeDeclaration.getName(),
-      declarationType: parseType(type, typeDeclaration, program),
+      declaration: parseType(type, typeDeclaration, program),
+      exported: Boolean(exportKeyword),
     }
   }
 
   return {
+    type: "declaration",
     name: typeDeclaration.getName(),
-    declarationType: parseType(type, typeDeclaration, program),
-    exported: typeDeclaration.getExportKeyword() !== undefined,
+    declaration: parseType(type, typeDeclaration, program),
+    exported: Boolean(exportKeyword),
   }
 }
 
@@ -495,13 +543,14 @@ const parseSourceFile = (sourceFile: SourceFile, program: Program) => {
 
   return {
     name: sourceFile.getBaseName(),
+    path: sourceFile.getFilePath() as string,
     typeDeclarations: typeDeclarations.map((declaration) =>
       parseTypeDeclaration(declaration, program)
     ),
   }
 }
 
-export function codegen(project: Project) {
+export function parse(project: Project) {
   const sourceFiles = project.getSourceFiles()
   const program = project.getProgram()
 

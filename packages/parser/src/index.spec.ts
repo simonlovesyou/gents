@@ -1,7 +1,8 @@
-import { Project } from "ts-morph"
-import { codegen } from "./index.js"
+import { Project, SymbolFlags, Type } from "ts-morph"
+import { parse } from "./index.js"
 import { describe, it, expect } from "@jest/globals"
 import dedent from "ts-dedent"
+import ts from "typescript"
 
 describe("codegen", () => {
   describe("primitives", () => {
@@ -15,13 +16,11 @@ describe("codegen", () => {
           `
       )
 
-      const result = codegen(project)
+      const result = parse(project)
 
-      expect(result?.[0]?.typeDeclarations?.[0]?.declarationType).toStrictEqual(
-        {
-          type: "number",
-        }
-      )
+      expect(result?.[0]?.typeDeclarations?.[0]?.declaration).toStrictEqual({
+        type: "number",
+      })
     })
     it("should correctly parse type `string`", () => {
       const project = new Project({ useInMemoryFileSystem: true })
@@ -33,13 +32,11 @@ describe("codegen", () => {
           `
       )
 
-      const result = codegen(project)
+      const result = parse(project)
 
-      expect(result?.[0]?.typeDeclarations?.[0]?.declarationType).toStrictEqual(
-        {
-          type: "string",
-        }
-      )
+      expect(result?.[0]?.typeDeclarations?.[0]?.declaration).toStrictEqual({
+        type: "string",
+      })
     })
     it("should correctly parse type `boolean`", () => {
       const project = new Project({ useInMemoryFileSystem: true })
@@ -51,13 +48,11 @@ describe("codegen", () => {
           `
       )
 
-      const result = codegen(project)
+      const result = parse(project)
 
-      expect(result?.[0]?.typeDeclarations?.[0]?.declarationType).toStrictEqual(
-        {
-          type: "boolean",
-        }
-      )
+      expect(result?.[0]?.typeDeclarations?.[0]?.declaration).toStrictEqual({
+        type: "boolean",
+      })
     })
   })
   describe("tuples", () => {
@@ -71,12 +66,12 @@ describe("codegen", () => {
           `
       )
 
-      const result = codegen(project)
+      const result = parse(project)
 
-      const targetType = result[0]?.typeDeclarations[0]?.declarationType
+      const targetType = result[0]?.typeDeclarations[0]?.declaration
       expect(targetType!.type === "array" && targetType?.tuple).toBe(true)
     })
-    it.only("should correctly parse the tuple members", () => {
+    it("should correctly parse the tuple members", () => {
       const project = new Project({ useInMemoryFileSystem: true })
 
       project.createSourceFile(
@@ -86,9 +81,9 @@ describe("codegen", () => {
           `
       )
 
-      const result = codegen(project)
+      const result = parse(project)
 
-      const targetType = result[0]?.typeDeclarations[0]?.declarationType
+      const targetType = result[0]?.typeDeclarations[0]?.declaration
       expect(targetType!.type === "array" && targetType?.elements)
         .toMatchInlineSnapshot(`
 [
@@ -97,6 +92,28 @@ describe("codegen", () => {
   },
   {
     "type": "string",
+  },
+]
+`)
+    })
+    it.skip("should correctly parse optional tuple members", () => {
+      const project = new Project({ useInMemoryFileSystem: true })
+
+      project.createSourceFile(
+        "test.ts",
+        dedent`
+            type Tuple = [number?]
+          `
+      )
+
+      const result = parse(project)
+
+      const targetType = result[0]?.typeDeclarations[0]?.declaration
+      expect(targetType!.type === "array" && targetType?.elements)
+        .toMatchInlineSnapshot(`
+[
+  {
+    "type": "number",
   },
 ]
 `)
@@ -114,24 +131,27 @@ describe("codegen", () => {
           `
       )
 
-      const result = codegen(project)
+      const result = parse(project)
 
       expect(result).toMatchInlineSnapshot(`
-  [
-    {
-      "name": "test.ts",
-      "typeDeclarations": [
-        {
-          "name": "MyInterface",
-          "type": {
-            "properties": [],
-            "type": "object",
-          },
+[
+  {
+    "name": "test.ts",
+    "path": "/test.ts",
+    "typeDeclarations": [
+      {
+        "declaration": {
+          "properties": [],
+          "type": "object",
         },
-      ],
-    },
-  ]
-  `)
+        "exported": false,
+        "name": "MyInterface",
+        "type": "declaration",
+      },
+    ],
+  },
+]
+`)
     })
     it("should correctly parse properties as optional", () => {
       const project = new Project({ useInMemoryFileSystem: true })
@@ -145,12 +165,11 @@ describe("codegen", () => {
     `
       )
 
-      const [testFile] = codegen(project)
+      const [testFile] = parse(project)
 
       expect(testFile?.typeDeclarations[0]).toMatchInlineSnapshot(`
 {
-  "name": "MyInterface",
-  "type": {
+  "declaration": {
     "properties": [
       {
         "name": "foo",
@@ -158,10 +177,14 @@ describe("codegen", () => {
         "property": {
           "type": "number",
         },
+        "type": "objectProperty",
       },
     ],
     "type": "object",
   },
+  "exported": false,
+  "name": "MyInterface",
+  "type": "declaration",
 }
 `)
     })
@@ -183,7 +206,7 @@ describe("codegen", () => {
         `
       )
 
-      const result = codegen(project)
+      const result = parse(project)
 
       expect(
         result[0]?.typeDeclarations.find(
@@ -191,12 +214,13 @@ describe("codegen", () => {
         )
       ).toMatchInlineSnapshot(`
 {
-  "exported": false,
-  "name": "AnotherCompany",
-  "type": {
+  "declaration": {
     "alias": "Company",
     "type": "alias",
   },
+  "exported": false,
+  "name": "AnotherCompany",
+  "type": "declaration",
 }
 `)
     })
@@ -215,7 +239,7 @@ describe("codegen", () => {
         `
       )
 
-      const result = codegen(project)
+      const result = parse(project)
 
       expect(
         result[0]?.typeDeclarations.find(
@@ -223,12 +247,13 @@ describe("codegen", () => {
         )
       ).toMatchInlineSnapshot(`
 {
-  "exported": false,
-  "name": "AnotherCompany",
-  "type": {
+  "declaration": {
     "alias": "Company",
     "type": "alias",
   },
+  "exported": false,
+  "name": "AnotherCompany",
+  "type": "declaration",
 }
 `)
     })
@@ -246,14 +271,13 @@ describe("codegen", () => {
           `
       )
 
-      const result = codegen(project)
+      const result = parse(project)
 
       expect(
         result[0]?.typeDeclarations.find((item) => item.name === "MyInterface")
       ).toMatchInlineSnapshot(`
 {
-  "name": "MyInterface",
-  "type": {
+  "declaration": {
     "properties": [
       {
         "name": "myProperty",
@@ -262,13 +286,62 @@ describe("codegen", () => {
           "reference": "Cool",
           "type": "reference",
         },
+        "type": "objectProperty",
       },
     ],
     "type": "object",
   },
+  "exported": false,
+  "name": "MyInterface",
+  "type": "declaration",
 }
 `)
     })
+  })
+  it("should correctly parse interface references as property type declaration to another type", () => {
+    const project = new Project({ useInMemoryFileSystem: true })
+
+    project.createSourceFile(
+      "test.ts",
+      dedent`
+            const AvailableProperty = {
+              foo: 'foo',
+              bar: 'bar',
+            } as const
+
+            type AvailableProperty = (typeof AvailableProperty)[keyof typeof AvailableProperty]
+  
+            interface MyInterface {
+                myProperty: AvailableProperty;
+            }
+          `
+    )
+
+    const result = parse(project)
+
+    expect(
+      result[0]?.typeDeclarations.find((item) => item.name === "MyInterface")
+    ).toMatchInlineSnapshot(`
+{
+  "declaration": {
+    "properties": [
+      {
+        "name": "myProperty",
+        "optional": false,
+        "property": {
+          "alias": "AvailableProperty",
+          "type": "alias",
+        },
+        "type": "objectProperty",
+      },
+    ],
+    "type": "object",
+  },
+  "exported": false,
+  "name": "MyInterface",
+  "type": "declaration",
+}
+`)
   })
 
   describe("aliases", () => {
@@ -282,24 +355,25 @@ describe("codegen", () => {
             id: number
             name: string
           }
-      
+
           declare const getUser: () => Promise<FullUser> | undefined
       
           type User = Awaited<ReturnType<typeof getUser>>
         `
       )
 
-      const result = codegen(project)
+      const result = parse(project)
 
       expect(result[0]?.typeDeclarations.find((item) => item.name === "User"))
         .toMatchInlineSnapshot(`
 {
-  "exported": false,
-  "name": "User",
-  "type": {
+  "declaration": {
     "alias": "FullUser",
     "type": "alias",
   },
+  "exported": false,
+  "name": "User",
+  "type": "declaration",
 }
 `)
     })
@@ -320,17 +394,18 @@ describe("codegen", () => {
         `
       )
 
-      const result = codegen(project)
+      const result = parse(project)
 
       expect(result[0]?.typeDeclarations.find((item) => item.name === "User"))
         .toMatchInlineSnapshot(`
 {
-  "exported": false,
-  "name": "User",
-  "type": {
+  "declaration": {
     "alias": "FullUser",
     "type": "alias",
   },
+  "exported": false,
+  "name": "User",
+  "type": "declaration",
 }
 `)
     })
@@ -353,16 +428,16 @@ describe("codegen", () => {
       `
     )
 
-    const result = codegen(project)
+    const result = parse(project)
 
     expect(result).toMatchInlineSnapshot(`
 [
   {
     "name": "test.ts",
+    "path": "/test.ts",
     "typeDeclarations": [
       {
-        "name": "Company",
-        "type": {
+        "declaration": {
           "properties": [
             {
               "name": "id",
@@ -370,6 +445,7 @@ describe("codegen", () => {
               "property": {
                 "type": "number",
               },
+              "type": "objectProperty",
             },
             {
               "name": "name",
@@ -377,14 +453,17 @@ describe("codegen", () => {
               "property": {
                 "type": "number",
               },
+              "type": "objectProperty",
             },
           ],
           "type": "object",
         },
+        "exported": false,
+        "name": "Company",
+        "type": "declaration",
       },
       {
-        "name": "AuthenticatedUser",
-        "type": {
+        "declaration": {
           "properties": [
             {
               "name": "companies",
@@ -395,12 +474,17 @@ describe("codegen", () => {
                   "type": "reference",
                 },
                 "readonly": false,
+                "tuple": false,
                 "type": "array",
               },
+              "type": "objectProperty",
             },
           ],
           "type": "object",
         },
+        "exported": false,
+        "name": "AuthenticatedUser",
+        "type": "declaration",
       },
     ],
   },
@@ -417,20 +501,22 @@ describe("codegen", () => {
       `
     )
 
-    const result = codegen(project)
+    const result = parse(project)
 
     expect(result).toMatchInlineSnapshot(`
 [
   {
     "name": "test.ts",
+    "path": "/test.ts",
     "typeDeclarations": [
       {
-        "exported": false,
-        "name": "Bar",
-        "type": {
+        "declaration": {
           "properties": [],
           "type": "object",
         },
+        "exported": false,
+        "name": "Bar",
+        "type": "declaration",
       },
     ],
   },

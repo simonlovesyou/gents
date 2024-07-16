@@ -3,13 +3,17 @@
   "version": "0.0.1",
   "type": "module",
   "files": [
-    "src/index.ts"
+    "dist/index.cjs",
+    "dist/index.js",
+    "dist/index.d.ts"
   ],
+  "types": "./dist/index.d.ts",
   "packageManager": "pnpm@8.15.3",
   "description": "",
-  "main": "index.js",
+  "main": "./dist/index.js",
   "scripts": {
-    "test": "jest src/*.spec.ts"
+    "test": "jest src/*.spec.ts",
+    "build": "tsup src/index.ts --format cjs,esm --dts src/index.ts"
   },
   "author": {
     "email": "simonljohansson92@gmail.com",
