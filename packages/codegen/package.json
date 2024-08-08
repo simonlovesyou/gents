@@ -1,0 +1,39 @@
+{
+  "name": "@gents/codegen",
+  "version": "0.0.1",
+  "type": "module",
+  "files": [
+    "dist/index.cjs",
+    "dist/index.js",
+    "dist/index.d.ts"
+  ],
+  "types": "./dist/index.d.ts",
+  "packageManager": "pnpm@8.15.3",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest src/*.spec.ts",
+    "build": "tsup src/index.ts --format cjs,esm --dts src/index.ts"
+  },
+  "author": {
+    "email": "simonljohansson92@gmail.com",
+    "url": "https://github.com/simonlovesyou",
+    "name": "Simon Johansson"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@total-typescript/shoehorn": "^0.1.2",
+    "@types/node": "^20.14.8",
+    "@types/object.groupby": "^1.0.4",
+    "ts-dedent": "^2.2.0",
+    "tsup": "8.0.2",
+    "typescript": "5.3.3",
+    "vitest": "^2.0.3"
+  },
+  "dependencies": {
+    "object.groupby": "^1.0.3",
+    "@gents/parser": "workspace:*",
+    "ts-morph": "21.0.1"
+  },
+  "peerDependencies": {}
+}
