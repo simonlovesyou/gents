@@ -1,8 +1,7 @@
-import { Project, SymbolFlags, Type } from "ts-morph"
+import { Project } from "ts-morph"
 import { parse } from "./index.js"
 import { describe, it, expect } from "@jest/globals"
 import dedent from "ts-dedent"
-import ts from "typescript"
 
 describe("codegen", () => {
   describe("primitives", () => {

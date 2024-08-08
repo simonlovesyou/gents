@@ -175,6 +175,12 @@ export type EnumEntity = {
     optional: boolean
   }>
 }
+export type FileEntity = {
+  type: "file"
+  name: string
+  path: string
+  typeDeclarations: DeclarationEntity[]
+}
 export type UnknownEntity = {
   type: "unknown"
 }
@@ -196,6 +202,7 @@ export type Entity =
   | EmptyObjectEntity
   | EnumEntity
   | EnumLiteralEntity
+  | FileEntity
   | IntersectionEntity
   | LiteralEntity
   | NeverEntity
@@ -542,6 +549,7 @@ const parseSourceFile = (sourceFile: SourceFile, program: Program) => {
     )
 
   return {
+    type: "file" as const,
     name: sourceFile.getBaseName(),
     path: sourceFile.getFilePath() as string,
     typeDeclarations: typeDeclarations.map((declaration) =>
