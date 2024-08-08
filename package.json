@@ -12,5 +12,8 @@
     "url": "https://github.com/simonlovesyou",
     "name": "Simon Johansson"
   },
+  "scripts": {
+    "build": "bun run --filter './packages/**' build"
+  },
   "license": "MIT"
 }
