@@ -80,7 +80,25 @@ export const generators: Generators = {
   anonymous: { create: () => factory.createStringLiteral("anonymous") },
   any: { create: () => factory.createStringLiteral("any") },
   objectProperty: {
-    create: () => factory.createStringLiteral("objectProperty"),
+    create: (entity, context) =>
+      factory.createPropertyAssignment(
+        factory.createIdentifier(entity.name),
+        isOneOfKindOrThrow(
+          context.next(
+            {
+              ...context,
+              parentEntity: entity,
+            },
+            entity.property
+          ),
+          [
+            SyntaxKind.ExpressionStatement,
+            SyntaxKind.Identifier,
+            SyntaxKind.CallExpression,
+            SyntaxKind.ArrayLiteralExpression,
+          ]
+        )
+      ),
   },
   enumLiteral: { create: () => factory.createStringLiteral("enumLiteral") },
   never: { create: () => factory.createStringLiteral("any") },
@@ -391,24 +409,9 @@ export const generators: Generators = {
     create: (entity, context) => {
       return factory.createObjectLiteralExpression(
         entity.properties.map((property) => {
-          return factory.createPropertyAssignment(
-            factory.createIdentifier(property.name),
-            isOneOfKindOrThrow(
-              context.next(
-                {
-                  ...context,
-                  parentEntity: entity,
-                },
-                property.property
-              ),
-              [
-                SyntaxKind.ExpressionStatement,
-                SyntaxKind.Identifier,
-                SyntaxKind.CallExpression,
-                SyntaxKind.ArrayLiteralExpression,
-              ]
-            )
-          )
+          return isOneOfKindOrThrow(context.next(context, property), [
+            SyntaxKind.PropertyAssignment,
+          ])
         }),
         true
       )
