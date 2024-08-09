@@ -1,4 +1,5 @@
-import type { Generators } from "./index"
+import type { Generators, Context } from "./index"
+import type { Entity } from "@gents/parser"
 import { SyntaxKind } from "ts-morph"
 import {
   factory,
@@ -10,12 +11,37 @@ import {
 } from "typescript"
 import camelcase from "camelcase"
 
+const createIdentifierImport = (
+  identifier: string,
+  specifier: string,
+  options: {
+    named?: boolean
+    typeOnly?: boolean
+  },
+  context: Context<Entity>
+) => {
+  context.addImportDeclaration({
+    specifier,
+    named: options.named
+      ? [{ name: identifier, typeOnly: Boolean(options?.typeOnly) }]
+      : [],
+    typeOnly: Boolean(options?.typeOnly),
+    clause: options.named ? undefined : identifier,
+  })
+  return factory.createIdentifier(identifier)
+}
+
 const boolean = {
-  create: () =>
+  create: (_, context) =>
     factory.createCallExpression(
       factory.createPropertyAccessExpression(
         factory.createPropertyAccessExpression(
-          factory.createIdentifier("faker"),
+          createIdentifierImport(
+            "faker",
+            "@faker-js/faker",
+            { named: true },
+            context
+          ),
           factory.createIdentifier("datatype")
         ),
         factory.createIdentifier("boolean")
@@ -133,7 +159,12 @@ export const generators: Generators = {
             factory.createIdentifier("T"),
             entity.declaration.type === "object"
               ? factory.createTypeReferenceNode(
-                  factory.createIdentifier("PartialDeep"),
+                  createIdentifierImport(
+                    "PartialDeep",
+                    "type-fest",
+                    { named: true, typeOnly: true },
+                    context
+                  ),
                   [
                     factory.createTypeReferenceNode(
                       factory.createIdentifier(entity.name),
@@ -200,7 +231,12 @@ export const generators: Generators = {
                 factory.createExpressionStatement(
                   factory.createCallExpression(
                     factory.createPropertyAccessExpression(
-                      factory.createIdentifier("faker"),
+                      createIdentifierImport(
+                        "faker",
+                        "@faker-js/faker",
+                        { named: true },
+                        context
+                      ),
                       factory.createIdentifier("seed")
                     ),
                     undefined,
@@ -221,7 +257,12 @@ export const generators: Generators = {
             factory.createAsExpression(
               factory.createCallExpression(
                 factory.createCallExpression(
-                  factory.createIdentifier("merge"),
+                  createIdentifierImport(
+                    "merge",
+                    "@fastify/deepmerge",
+                    {},
+                    context
+                  ),
                   undefined,
                   []
                 ),
@@ -250,7 +291,12 @@ export const generators: Generators = {
                           )
                         ),
                         factory.createTypeReferenceNode(
-                          factory.createIdentifier("ReadonlyDeep"),
+                          createIdentifierImport(
+                            "ReadonlyDeep",
+                            "type-fest",
+                            { named: true, typeOnly: true },
+                            context
+                          ),
                           [
                             factory.createTypeReferenceNode(
                               factory.createIdentifier(entity.name),
@@ -276,7 +322,15 @@ export const generators: Generators = {
                 ]
               ),
               factory.createTypeReferenceNode(
-                factory.createIdentifier("SimplifyDeep"),
+                createIdentifierImport(
+                  "SimplifyDeep",
+                  "type-fest",
+                  {
+                    typeOnly: true,
+                    named: true,
+                  },
+                  context
+                ),
                 [
                   factory.createIntersectionTypeNode([
                     factory.createTypeReferenceNode(
@@ -297,11 +351,16 @@ export const generators: Generators = {
     },
   },
   number: {
-    create: () => {
+    create: (_, context) => {
       return factory.createCallExpression(
         factory.createPropertyAccessExpression(
           factory.createPropertyAccessExpression(
-            factory.createIdentifier("faker"),
+            createIdentifierImport(
+              "faker",
+              "@faker-js/faker",
+              { named: true },
+              context
+            ),
             factory.createIdentifier("number")
           ),
           factory.createIdentifier("int")
@@ -363,7 +422,12 @@ export const generators: Generators = {
           return factory.createCallExpression(
             factory.createPropertyAccessExpression(
               factory.createPropertyAccessExpression(
-                factory.createIdentifier("faker"),
+                createIdentifierImport(
+                  "faker",
+                  "@faker-js/faker",
+                  { named: true },
+                  context
+                ),
                 factory.createIdentifier("string")
               ),
               factory.createIdentifier("uuid")
@@ -376,7 +440,12 @@ export const generators: Generators = {
           return factory.createCallExpression(
             factory.createPropertyAccessExpression(
               factory.createPropertyAccessExpression(
-                factory.createIdentifier("faker"),
+                createIdentifierImport(
+                  "faker",
+                  "@faker-js/faker",
+                  { named: true },
+                  context
+                ),
                 factory.createIdentifier("company")
               ),
               factory.createIdentifier("name")
@@ -389,7 +458,12 @@ export const generators: Generators = {
       return factory.createCallExpression(
         factory.createPropertyAccessExpression(
           factory.createPropertyAccessExpression(
-            factory.createIdentifier("faker"),
+            createIdentifierImport(
+              "faker",
+              "@faker-js/faker",
+              { named: true },
+              context
+            ),
             factory.createIdentifier("string")
           ),
           factory.createIdentifier("alpha")
@@ -404,7 +478,12 @@ export const generators: Generators = {
       return factory.createCallExpression(
         factory.createPropertyAccessExpression(
           factory.createPropertyAccessExpression(
-            factory.createIdentifier("faker"),
+            createIdentifierImport(
+              "faker",
+              "@faker-js/faker",
+              { named: true },
+              context
+            ),
             factory.createIdentifier("helpers")
           ),
           factory.createIdentifier("arrayElement")
@@ -413,11 +492,17 @@ export const generators: Generators = {
         [
           factory.createAsExpression(
             factory.createArrayLiteralExpression(
-              entity.values.map((value) =>
-                isOneOfKindOrThrow(
-                  context.next({ ...context, parentEntity: entity }, value),
-                  [SyntaxKind.CallExpression, SyntaxKind.Identifier]
-                )
+              entity.values.map(
+                (value) =>
+                  isOneOfKindOrThrow(
+                    context.next({ ...context, parentEntity: entity }, value),
+                    [
+                      SyntaxKind.CallExpression,
+                      SyntaxKind.Identifier,
+                      SyntaxKind.ArrayLiteralExpression,
+                      SyntaxKind.StringLiteral,
+                    ]
+                  ) as Expression
               ),
               false
             ),
