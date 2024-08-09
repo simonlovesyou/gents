@@ -221,7 +221,13 @@ export const codegen = (
         generators,
         next,
         addImportDeclaration: (importSpecifier) => {
-          imports.push(importSpecifier)
+          if (
+            !imports.some((import_) => {
+              return JSON.stringify(import_) === JSON.stringify(importSpecifier)
+            })
+          ) {
+            imports.push(importSpecifier)
+          }
         },
         fileEntity: entity,
       })
