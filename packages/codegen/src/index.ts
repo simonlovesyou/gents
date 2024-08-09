@@ -245,15 +245,21 @@ export const codegen = (
 
       const consolidateTypeImports = options?.consolidateTypeImports ?? true
 
-      const allNamedImportsAreTypeOnly = namedFlatImports.every(
-        (namedImport) => namedImport.typeOnly,
-      )
+      const allNamedImportsAreTypeOnly =
+        namedFlatImports.length > 0 &&
+        namedFlatImports.every((namedImport) => namedImport.typeOnly)
 
       const rootImportIsTypeOnly =
         allNamedImportsAreTypeOnly && consolidateTypeImports
 
       sourceFile.addImportDeclaration({
-        moduleSpecifier: specifier,
+        moduleSpecifier: maybeResolveImportPath(
+          sourceFile.getFilePath(),
+          specifier,
+        ),
+        defaultImport: importGroup.find(
+          (importSpecifier) => importSpecifier.clause,
+        )?.clause,
         isTypeOnly: rootImportIsTypeOnly,
         namedImports: namedFlatImports.map((import_) => ({
           ...import_,
