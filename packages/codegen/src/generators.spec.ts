@@ -358,6 +358,22 @@ describe("generators", () => {
       })
     })
   })
+  describe("reference", () => {
+    describe("Date", () => {
+      const result = generators.reference.create(
+        {
+          type: "reference",
+          reference: "Date",
+        },
+        {
+          ...defaultContext,
+        },
+      )
+      it("should generate the correct output", () => {
+        expect(printNode(result)).toMatchInlineSnapshot(`"faker.date.anytime()"`)
+      })
+    })
+  })
   describe("array", () => {
     describe("element = alias", () => {
       const result = generators.array.create(

@@ -7,6 +7,7 @@ import type {
 import { NodeFlags, SyntaxKind } from "ts-morph"
 import {
   factory,
+  ObjectLiteralExpression,
   Expression,
   Node,
   Identifier,
@@ -20,7 +21,7 @@ import { EndOfFileToken } from "typescript"
 const createPropertyAccessChain = (
   properties: {
     name: string
-    optional: boolean
+    optional?: boolean
   }[],
 ) => {
   return properties.slice(1).reduce<Expression>((acc, property) => {
@@ -86,7 +87,9 @@ const isOneOfKindOrThrow = <TKind extends SyntaxKind>(
       ? CallExpression
       : TKind extends SyntaxKind.ArrayLiteralExpression
         ? ArrayLiteralExpression
-        : never => {
+        : TKind extends SyntaxKind.ObjectLiteralExpression
+          ? ObjectLiteralExpression
+          : never => {
   if (!(kind as unknown[]).includes(node.kind)) {
     throw new TypeError(
       `Expected to handle node of syntax kind "${kind}", got "${node.kind}"`,
@@ -219,6 +222,7 @@ export const generators: Generators = {
             SyntaxKind.Identifier,
             SyntaxKind.CallExpression,
             SyntaxKind.ArrayLiteralExpression,
+            SyntaxKind.ObjectLiteralExpression,
           ],
         ),
       ),
@@ -334,6 +338,17 @@ export const generators: Generators = {
   },
   reference: {
     create: (entity, context) => {
+      if (entity.reference === "Date") {
+        return factory.createCallExpression(
+          createPropertyAccessChain([
+            { name: "faker" },
+            { name: "date" },
+            { name: "anytime" },
+          ]),
+          undefined,
+          [],
+        )
+      }
       return factory.createCallExpression(
         factory.createIdentifier(
           camelcase(generateDeclarationName(entity.reference)),
