@@ -1,17 +1,30 @@
-import { FileEntity } from "@gents/parser"
+import {
+  DeclarationEntity,
+  FileEntity,
+  ObjectPropertyEntity,
+} from "@gents/parser"
 import { generators } from "./generators"
 import { printNode } from "ts-morph"
 import { describe, it, expect } from "vitest"
+import { next } from "."
 
 describe("generators", () => {
   const defaultContext = {
-    next: (() => {}) as any,
+    next: next,
     parentEntity: {
       type: "file" as const,
       name: "foo",
       path: "./foo.ts",
       typeDeclarations: [],
     },
+    parentDeclarationEntity: {
+      type: "declaration",
+      name: "Test",
+      exported: false,
+      declaration: {
+        type: "string",
+      },
+    } satisfies DeclarationEntity,
     generators: {} as unknown as typeof generators,
     fileEntity: undefined as unknown as FileEntity,
     hints: [],
@@ -342,6 +355,31 @@ describe("generators", () => {
             `"faker.image.avatar()"`,
           )
         })
+      })
+    })
+  })
+  describe("array", () => {
+    describe("element = alias", () => {
+      const result = generators.array.create(
+        {
+          type: "array",
+          elements: {
+            type: "alias",
+            alias: "Foo",
+          },
+          readonly: true,
+          tuple: false,
+        },
+        {
+          ...defaultContext,
+        },
+      )
+      it("should generate the correct output", () => {
+        expect(printNode(result)).toMatchInlineSnapshot(`
+          "faker.helpers.multiple(() => generateFoo(), {
+              count: test?.length ?? { max: faker.number.int(42), min: 0 }
+          })"
+        `)
       })
     })
   })

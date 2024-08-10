@@ -17,6 +17,24 @@ import {
 import camelcase from "camelcase"
 import { EndOfFileToken } from "typescript"
 
+const createPropertyAccessChain = (
+  properties: {
+    name: string
+    optional: boolean
+  }[],
+) => {
+  return properties.slice(1).reduce<Expression>((acc, property) => {
+    if (!property.optional) {
+      return factory.createPropertyAccessExpression(acc, property.name)
+    }
+    return factory.createPropertyAccessChain(
+      acc,
+      factory.createToken(SyntaxKind.QuestionDotToken),
+      property.name,
+    )
+  }, factory.createIdentifier(properties[0]!.name))
+}
+
 const createIdentifierImport = (
   identifier: string,
   specifier: string,
@@ -211,8 +229,96 @@ export const generators: Generators = {
   enum: { create: () => factory.createStringLiteral("objectProperty") },
   unknown: { create: () => factory.createStringLiteral("enumLiteral") },
   array: {
-    create: () => {
-      return factory.createArrayLiteralExpression([])
+    create: (entity, context) => {
+      if (!Array.isArray(entity.elements)) {
+        return factory.createCallExpression(
+          factory.createPropertyAccessExpression(
+            factory.createPropertyAccessExpression(
+              factory.createIdentifier("faker"),
+              factory.createIdentifier("helpers"),
+            ),
+            factory.createIdentifier("multiple"),
+          ),
+          undefined,
+          [
+            factory.createArrowFunction(
+              undefined,
+              undefined,
+              [],
+              undefined,
+              factory.createToken(SyntaxKind.EqualsGreaterThanToken),
+              context.next(
+                { ...context, parentEntity: entity },
+                entity.elements,
+              ) as Expression,
+            ),
+            factory.createObjectLiteralExpression(
+              [
+                factory.createPropertyAssignment(
+                  factory.createIdentifier("count"),
+                  factory.createBinaryExpression(
+                    createPropertyAccessChain(
+                      [
+                        {
+                          name: camelcase(
+                            context.parentDeclarationEntity!.name,
+                          ),
+                          optional: true,
+                        },
+                        context.closestIdentifer
+                          ? {
+                              name: camelcase(context.closestIdentifer.name),
+                              optional: true,
+                            }
+                          : undefined,
+                        { name: "length", optional: true },
+                      ].filter(
+                        (property): property is NonNullable<typeof property> =>
+                          property !== undefined,
+                      ),
+                    ),
+                    factory.createToken(SyntaxKind.QuestionQuestionToken),
+                    factory.createObjectLiteralExpression(
+                      [
+                        factory.createPropertyAssignment(
+                          factory.createIdentifier("max"),
+                          factory.createCallExpression(
+                            factory.createPropertyAccessExpression(
+                              factory.createPropertyAccessExpression(
+                                factory.createIdentifier("faker"),
+                                factory.createIdentifier("number"),
+                              ),
+                              factory.createIdentifier("int"),
+                            ),
+                            undefined,
+                            [factory.createNumericLiteral("42")],
+                          ),
+                        ),
+                        factory.createPropertyAssignment(
+                          factory.createIdentifier("min"),
+                          factory.createNumericLiteral("0"),
+                        ),
+                      ],
+                      false,
+                    ),
+                  ),
+                ),
+              ],
+              true,
+            ),
+          ],
+        )
+      }
+
+      return factory.createArrayLiteralExpression(
+        Array.isArray(entity.elements)
+          ? (entity.elements.map((element) =>
+              context.next({ ...context, parentEntity: entity }, element),
+            ) as unknown as Expression[])
+          : (factory.createArrayLiteralExpression(
+              [],
+            ) as unknown as Expression[]),
+      )
     },
   },
   alias: {
