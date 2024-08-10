@@ -334,7 +334,12 @@ const parseType = (
     symbol?.getFlags(),
     symbol && symbol.getFlags() & SymbolFlags.TypeAliasExcludes,
   )
-  if ((isTypeReference(type) || symbol) && node === undefined) {
+  if (
+    (isTypeReference(type) || symbol) &&
+    node === undefined &&
+    symbol &&
+    (symbol.getFlags() & SymbolFlags.TypeLiteral) === 0
+  ) {
     const [declaration] = type.getSymbolOrThrow().getDeclarations() ?? []
 
     if (declaration) {

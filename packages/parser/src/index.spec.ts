@@ -411,6 +411,67 @@ describe("codegen", () => {
     })
   })
 
+  describe("objects", () => {
+    it("should correctly parse object literals", () => {
+      const project = new Project({ useInMemoryFileSystem: true })
+
+      project.createSourceFile(
+        "test.ts",
+        dedent`
+          type FullUser = {
+            info: {
+              id: number
+              name: string
+            }
+          }
+        `,
+      )
+
+      const result = parse(project)
+
+      expect(
+        result[0]?.typeDeclarations.find((item) => item.name === "FullUser"),
+      ).toMatchInlineSnapshot(`
+        {
+          "declaration": {
+            "properties": [
+              {
+                "name": "info",
+                "optional": false,
+                "property": {
+                  "properties": [
+                    {
+                      "name": "id",
+                      "optional": false,
+                      "property": {
+                        "type": "number",
+                      },
+                      "type": "objectProperty",
+                    },
+                    {
+                      "name": "name",
+                      "optional": false,
+                      "property": {
+                        "type": "string",
+                      },
+                      "type": "objectProperty",
+                    },
+                  ],
+                  "type": "object",
+                },
+                "type": "objectProperty",
+              },
+            ],
+            "type": "object",
+          },
+          "exported": false,
+          "name": "FullUser",
+          "type": "declaration",
+        }
+      `)
+    })
+  })
+
   it("should correctly parse nested array apparent type alias symbols", () => {
     const project = new Project({ useInMemoryFileSystem: true })
 
