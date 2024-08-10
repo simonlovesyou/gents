@@ -21,6 +21,7 @@ import type {
   AliasEntity,
   ArrayEntity,
   ReferenceEntity,
+  FileEntity,
 } from "@gents/parser"
 import { printNode, Project, ts } from "ts-morph"
 import { generators } from "./generators.ts"
@@ -102,6 +103,7 @@ interface Generator<T extends Entity> {
 export type Generators = {
   declaration: Generator<DeclarationEntity>
   alias: Generator<AliasEntity>
+  file: Generator<FileEntity>
   reference: Generator<ReferenceEntity>
   anonymous: Generator<AnonymousEntity>
   any: Generator<AnyEntity>
@@ -228,22 +230,21 @@ export const codegen = (
       { overwrite: true },
     )
 
-    const statements = entity.typeDeclarations.map((declaration) => {
-      return generators.declaration.create(declaration, {
-        parentEntity: entity,
-        generators,
-        next,
-        addImportDeclaration: (importSpecifier) => {
-          if (
-            !imports.some((import_) => {
-              return JSON.stringify(import_) === JSON.stringify(importSpecifier)
-            })
-          ) {
-            imports.push(importSpecifier)
-          }
-        },
-        fileEntity: entity,
-      })
+    const generatedSourceFile = generators.file.create(entity, {
+      parentEntity: entity,
+      generators,
+      next,
+      addImportDeclaration: (importSpecifier) => {
+        if (
+          !imports.some((import_) => {
+            return JSON.stringify(import_) === JSON.stringify(importSpecifier)
+          })
+        ) {
+          imports.push(importSpecifier)
+        }
+      },
+      fileEntity: entity,
+      hints: [],
     })
 
     Object.entries(
@@ -282,11 +283,8 @@ export const codegen = (
     })
     imports = []
 
-    sourceFile.addStatements((writer) =>
-      statements
-        .map((statement) => writer.write(printNode(statement)))
-        .join("\n"),
-    )
+    sourceFile.addStatements(printNode(generatedSourceFile))
   })
+  project.save()
   return project
 }

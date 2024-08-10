@@ -63,7 +63,7 @@ describe("codegen", () => {
     describe("single `context.addImportDeclaration` call", () => {
       describe("single non-type named import", () => {
         const generators = {
-          declaration: {
+          file: {
             create: (_, context) => {
               context.addImportDeclaration({
                 named: [{ name: "foo", typeOnly: false }],
@@ -108,7 +108,7 @@ describe("codegen", () => {
       })
       describe("single type named import", () => {
         const generators = {
-          declaration: {
+          file: {
             create: (_, context) => {
               context.addImportDeclaration({
                 named: [{ name: "foo", typeOnly: true }],
@@ -153,7 +153,7 @@ describe("codegen", () => {
       })
       describe("multiple non-type named imports", () => {
         const generators = {
-          declaration: {
+          file: {
             create: (_, context) => {
               context.addImportDeclaration({
                 named: [
@@ -207,7 +207,7 @@ describe("codegen", () => {
             consolidateTypeImports: true,
           }
           const generators = {
-            declaration: {
+            file: {
               create: (_, context) => {
                 context.addImportDeclaration({
                   named: [
@@ -262,7 +262,7 @@ describe("codegen", () => {
             consolidateTypeImports: false,
           }
           const generators = {
-            declaration: {
+            file: {
               create: (_, context) => {
                 context.addImportDeclaration({
                   named: [
@@ -316,7 +316,7 @@ describe("codegen", () => {
     describe("multiple `context.addImportDeclaration` call", () => {
       describe("named non-type imports from same specifier", () => {
         const generators = {
-          declaration: {
+          file: {
             create: (_, context) => {
               context.addImportDeclaration({
                 named: [{ name: "foo", typeOnly: false }],
@@ -377,7 +377,7 @@ describe("codegen", () => {
           }
 
           const generators = {
-            declaration: {
+            file: {
               create: (_, context) => {
                 context.addImportDeclaration({
                   named: [{ name: "foo", typeOnly: true }],
@@ -439,7 +439,7 @@ describe("codegen", () => {
           }
 
           const generators = {
-            declaration: {
+            file: {
               create: (_, context) => {
                 context.addImportDeclaration({
                   named: [{ name: "foo", typeOnly: true }],

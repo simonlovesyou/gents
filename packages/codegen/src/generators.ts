@@ -1,6 +1,6 @@
 import type { Generators, Context } from "./index"
 import type { Entity } from "@gents/parser"
-import { SyntaxKind } from "ts-morph"
+import { NodeFlags, SyntaxKind } from "ts-morph"
 import {
   factory,
   Expression,
@@ -8,8 +8,10 @@ import {
   Identifier,
   CallExpression,
   ArrayLiteralExpression,
+  Statement,
 } from "typescript"
 import camelcase from "camelcase"
+import { EndOfFileToken } from "typescript"
 
 const createIdentifierImport = (
   identifier: string,
@@ -18,7 +20,7 @@ const createIdentifierImport = (
     named?: boolean
     typeOnly?: boolean
   },
-  context: Context<Entity>
+  context: Context<Entity>,
 ) => {
   context.addImportDeclaration({
     specifier,
@@ -40,32 +42,32 @@ const boolean = {
             "faker",
             "@faker-js/faker",
             { named: true },
-            context
+            context,
           ),
-          factory.createIdentifier("datatype")
+          factory.createIdentifier("datatype"),
         ),
-        factory.createIdentifier("boolean")
+        factory.createIdentifier("boolean"),
       ),
       undefined,
-      []
+      [],
     ),
 } satisfies Generators["boolean"]
 
 const isOneOfKindOrThrow = <TKind extends SyntaxKind>(
   node: Node,
-  kind: Array<TKind>
+  kind: Array<TKind>,
 ): TKind extends SyntaxKind.ExpressionStatement
   ? Expression
   : TKind extends SyntaxKind.Identifier
-  ? Identifier
-  : TKind extends SyntaxKind.CallExpression
-  ? CallExpression
-  : TKind extends SyntaxKind.ArrayLiteralExpression
-  ? ArrayLiteralExpression
-  : never => {
+    ? Identifier
+    : TKind extends SyntaxKind.CallExpression
+      ? CallExpression
+      : TKind extends SyntaxKind.ArrayLiteralExpression
+        ? ArrayLiteralExpression
+        : never => {
   if (!(kind as unknown[]).includes(node.kind)) {
     throw new TypeError(
-      `Expected to handle node of syntax kind "${kind}", got "${node.kind}"`
+      `Expected to handle node of syntax kind "${kind}", got "${node.kind}"`,
     )
   }
   return node as TKind extends SyntaxKind.ExpressionStatement
@@ -89,15 +91,15 @@ export const generators: Generators = {
               ...context,
               parentEntity: entity,
             },
-            entity.property
+            entity.property,
           ),
           [
             SyntaxKind.ExpressionStatement,
             SyntaxKind.Identifier,
             SyntaxKind.CallExpression,
             SyntaxKind.ArrayLiteralExpression,
-          ]
-        )
+          ],
+        ),
       ),
     hints: [
       {
@@ -119,10 +121,10 @@ export const generators: Generators = {
     create: (entity, context) => {
       return factory.createCallExpression(
         factory.createIdentifier(
-          camelcase(generateDeclarationName(entity.alias))
+          camelcase(generateDeclarationName(entity.alias)),
         ),
         undefined,
-        []
+        [],
       )
     },
   },
@@ -130,10 +132,10 @@ export const generators: Generators = {
     create: (entity, context) => {
       return factory.createCallExpression(
         factory.createIdentifier(
-          camelcase(generateDeclarationName(entity.reference))
+          camelcase(generateDeclarationName(entity.reference)),
         ),
         undefined,
-        []
+        [],
       )
     },
   },
@@ -143,10 +145,10 @@ export const generators: Generators = {
         [
           factory.createPropertyAssignment(
             factory.createIdentifier("intersection"),
-            factory.createTrue()
+            factory.createTrue(),
           ),
         ],
-        true
+        true,
       )
     },
   },
@@ -156,10 +158,30 @@ export const generators: Generators = {
         [
           factory.createPropertyAssignment(
             factory.createIdentifier("utility"),
-            factory.createTrue()
+            factory.createTrue(),
           ),
         ],
-        true
+        true,
+      )
+    },
+  },
+  file: {
+    create: (entity, context) => {
+      const statements = entity.typeDeclarations.map((declaration) => {
+        return context.next(
+          {
+            ...context,
+            parentEntity: entity,
+            fileEntity: entity,
+          },
+          declaration,
+        )
+      })
+
+      return factory.createSourceFile(
+        statements as Statement[],
+        factory.createToken(SyntaxKind.EndOfFileToken),
+        NodeFlags.None,
       )
     },
   },
@@ -175,7 +197,7 @@ export const generators: Generators = {
         undefined,
         undefined,
         factory.createIdentifier(
-          camelcase(generateDeclarationName(entity.name))
+          camelcase(generateDeclarationName(entity.name)),
         ),
         [
           factory.createTypeParameterDeclaration(
@@ -187,20 +209,20 @@ export const generators: Generators = {
                     "PartialDeep",
                     "type-fest",
                     { named: true, typeOnly: true },
-                    context
+                    context,
                   ),
                   [
                     factory.createTypeReferenceNode(
                       factory.createIdentifier(entity.name),
-                      undefined
+                      undefined,
                     ),
-                  ]
+                  ],
                 )
               : factory.createTypeReferenceNode(
                   factory.createIdentifier(entity.name),
-                  undefined
+                  undefined,
                 ),
-            undefined
+            undefined,
           ),
         ],
         [
@@ -210,7 +232,7 @@ export const generators: Generators = {
             factory.createIdentifier(camelcase(entity.name)),
             factory.createToken(SyntaxKind.QuestionToken),
             factory.createTypeReferenceNode(factory.createIdentifier("T")),
-            undefined
+            undefined,
           ),
           factory.createParameterDeclaration(
             undefined,
@@ -225,12 +247,12 @@ export const generators: Generators = {
                 factory.createUnionTypeNode([
                   factory.createKeywordTypeNode(SyntaxKind.NumberKeyword),
                   factory.createArrayTypeNode(
-                    factory.createKeywordTypeNode(SyntaxKind.NumberKeyword)
+                    factory.createKeywordTypeNode(SyntaxKind.NumberKeyword),
                   ),
-                ])
+                ]),
               ),
             ]),
-            undefined
+            undefined,
           ),
         ],
         undefined,
@@ -245,10 +267,10 @@ export const generators: Generators = {
               factory.createPropertyAccessChain(
                 factory.createIdentifier("options"),
                 factory.createToken(SyntaxKind.QuestionDotToken),
-                factory.createIdentifier("seed")
+                factory.createIdentifier("seed"),
               ),
               factory.createToken(SyntaxKind.ExclamationEqualsEqualsToken),
-              factory.createIdentifier("undefined")
+              factory.createIdentifier("undefined"),
             ),
             factory.createBlock(
               [
@@ -259,23 +281,23 @@ export const generators: Generators = {
                         "faker",
                         "@faker-js/faker",
                         { named: true },
-                        context
+                        context,
                       ),
-                      factory.createIdentifier("seed")
+                      factory.createIdentifier("seed"),
                     ),
                     undefined,
                     [
                       factory.createPropertyAccessExpression(
                         factory.createIdentifier("options"),
-                        factory.createIdentifier("seed")
+                        factory.createIdentifier("seed"),
                       ),
-                    ]
-                  )
+                    ],
+                  ),
                 ),
               ],
-              true
+              true,
             ),
-            undefined
+            undefined,
           ),
           factory.createReturnStatement(
             factory.createAsExpression(
@@ -285,10 +307,10 @@ export const generators: Generators = {
                     "merge",
                     "@fastify/deepmerge",
                     {},
-                    context
+                    context,
                   ),
                   undefined,
-                  []
+                  [],
                 ),
                 undefined,
                 [
@@ -302,32 +324,32 @@ export const generators: Generators = {
                                 ...context,
                                 parentEntity: entity,
                               },
-                              entity.declaration
+                              entity.declaration,
                             ),
                             [
                               SyntaxKind.ExpressionStatement,
                               SyntaxKind.ObjectLiteralExpression,
-                            ]
+                            ],
                           ),
                           factory.createTypeReferenceNode(
                             factory.createIdentifier("const"),
-                            undefined
-                          )
+                            undefined,
+                          ),
                         ),
                         factory.createTypeReferenceNode(
                           createIdentifierImport(
                             "ReadonlyDeep",
                             "type-fest",
                             { named: true, typeOnly: true },
-                            context
+                            context,
                           ),
                           [
                             factory.createTypeReferenceNode(
                               factory.createIdentifier(entity.name),
-                              undefined
+                              undefined,
                             ),
-                          ]
-                        )
+                          ],
+                        ),
                       )
                     : isOneOfKindOrThrow(
                         context.next(
@@ -335,15 +357,15 @@ export const generators: Generators = {
                             ...context,
                             parentEntity: entity,
                           },
-                          entity.declaration
+                          entity.declaration,
                         ),
                         [
                           SyntaxKind.ExpressionStatement,
                           SyntaxKind.CallExpression,
                           SyntaxKind.ObjectLiteralExpression,
-                        ]
+                        ],
                       ),
-                ]
+                ],
               ),
               factory.createTypeReferenceNode(
                 createIdentifierImport(
@@ -353,24 +375,24 @@ export const generators: Generators = {
                     typeOnly: true,
                     named: true,
                   },
-                  context
+                  context,
                 ),
                 [
                   factory.createIntersectionTypeNode([
                     factory.createTypeReferenceNode(
                       factory.createIdentifier(entity.name),
-                      undefined
+                      undefined,
                     ),
                     factory.createTypeReferenceNode(
                       factory.createIdentifier("T"),
-                      undefined
+                      undefined,
                     ),
                   ]),
-                ]
-              )
-            )
+                ],
+              ),
+            ),
           ),
-        ])
+        ]),
       )
     },
   },
@@ -383,14 +405,14 @@ export const generators: Generators = {
               "faker",
               "@faker-js/faker",
               { named: true },
-              context
+              context,
             ),
-            factory.createIdentifier("number")
+            factory.createIdentifier("number"),
           ),
-          factory.createIdentifier("int")
+          factory.createIdentifier("int"),
         ),
         undefined,
-        []
+        [],
       )
     },
   },
@@ -419,7 +441,7 @@ export const generators: Generators = {
             SyntaxKind.PropertyAssignment,
           ])
         }),
-        true
+        true,
       )
     },
   },
@@ -433,14 +455,14 @@ export const generators: Generators = {
                 "faker",
                 "@faker-js/faker",
                 { named: true },
-                context
+                context,
               ),
-              factory.createIdentifier("string")
+              factory.createIdentifier("string"),
             ),
-            factory.createIdentifier("uuid")
+            factory.createIdentifier("uuid"),
           ),
           undefined,
-          []
+          [],
         )
       }
       if ("name" in context.parentEntity) {
@@ -453,14 +475,14 @@ export const generators: Generators = {
                   "faker",
                   "@faker-js/faker",
                   { named: true },
-                  context
+                  context,
                 ),
-                factory.createIdentifier("string")
+                factory.createIdentifier("string"),
               ),
-              factory.createIdentifier("uuid")
+              factory.createIdentifier("uuid"),
             ),
             undefined,
-            []
+            [],
           )
         }
         if (name.toLowerCase().includes("company")) {
@@ -471,14 +493,14 @@ export const generators: Generators = {
                   "faker",
                   "@faker-js/faker",
                   { named: true },
-                  context
+                  context,
                 ),
-                factory.createIdentifier("company")
+                factory.createIdentifier("company"),
               ),
-              factory.createIdentifier("name")
+              factory.createIdentifier("name"),
             ),
             undefined,
-            []
+            [],
           )
         }
       }
@@ -489,14 +511,14 @@ export const generators: Generators = {
               "faker",
               "@faker-js/faker",
               { named: true },
-              context
+              context,
             ),
-            factory.createIdentifier("string")
+            factory.createIdentifier("string"),
           ),
-          factory.createIdentifier("alpha")
+          factory.createIdentifier("alpha"),
         ),
         undefined,
-        []
+        [],
       )
     },
   },
@@ -509,11 +531,11 @@ export const generators: Generators = {
               "faker",
               "@faker-js/faker",
               { named: true },
-              context
+              context,
             ),
-            factory.createIdentifier("helpers")
+            factory.createIdentifier("helpers"),
           ),
-          factory.createIdentifier("arrayElement")
+          factory.createIdentifier("arrayElement"),
         ),
         undefined,
         [
@@ -528,17 +550,17 @@ export const generators: Generators = {
                       SyntaxKind.Identifier,
                       SyntaxKind.ArrayLiteralExpression,
                       SyntaxKind.StringLiteral,
-                    ]
-                  ) as Expression
+                    ],
+                  ) as Expression,
               ),
-              false
+              false,
             ),
             factory.createTypeReferenceNode(
               factory.createIdentifier("const"),
-              undefined
-            )
+              undefined,
+            ),
           ),
-        ]
+        ],
       )
     },
   },
