@@ -12,7 +12,7 @@ describe("codegen", () => {
         "test.ts",
         dedent`
             type Number = number
-          `
+          `,
       )
 
       const result = parse(project)
@@ -28,7 +28,7 @@ describe("codegen", () => {
         "test.ts",
         dedent`
             type String = string
-          `
+          `,
       )
 
       const result = parse(project)
@@ -44,7 +44,7 @@ describe("codegen", () => {
         "test.ts",
         dedent`
             type Boolean = boolean
-          `
+          `,
       )
 
       const result = parse(project)
@@ -62,7 +62,7 @@ describe("codegen", () => {
         "test.ts",
         dedent`
             type Tuple = [number]
-          `
+          `,
       )
 
       const result = parse(project)
@@ -77,7 +77,7 @@ describe("codegen", () => {
         "test.ts",
         dedent`
             type Tuple = [number, string]
-          `
+          `,
       )
 
       const result = parse(project)
@@ -102,7 +102,7 @@ describe("codegen", () => {
         "test.ts",
         dedent`
             type Tuple = [number?]
-          `
+          `,
       )
 
       const result = parse(project)
@@ -127,30 +127,31 @@ describe("codegen", () => {
         dedent`
             interface MyInterface {
             }
-          `
+          `,
       )
 
       const result = parse(project)
 
       expect(result).toMatchInlineSnapshot(`
-[
-  {
-    "name": "test.ts",
-    "path": "/test.ts",
-    "typeDeclarations": [
-      {
-        "declaration": {
-          "properties": [],
-          "type": "object",
-        },
-        "exported": false,
-        "name": "MyInterface",
-        "type": "declaration",
-      },
-    ],
-  },
-]
-`)
+        [
+          {
+            "name": "test.ts",
+            "path": "/test.ts",
+            "type": "file",
+            "typeDeclarations": [
+              {
+                "declaration": {
+                  "properties": [],
+                  "type": "object",
+                },
+                "exported": false,
+                "name": "MyInterface",
+                "type": "declaration",
+              },
+            ],
+          },
+        ]
+      `)
     })
     it("should correctly parse properties as optional", () => {
       const project = new Project({ useInMemoryFileSystem: true })
@@ -161,7 +162,7 @@ describe("codegen", () => {
       interface MyInterface {
         foo?: number
       }
-    `
+    `,
       )
 
       const [testFile] = parse(project)
@@ -202,15 +203,15 @@ describe("codegen", () => {
           }
 
           type AnotherCompany = Company
-        `
+        `,
       )
 
       const result = parse(project)
 
       expect(
         result[0]?.typeDeclarations.find(
-          (item) => item.name === "AnotherCompany"
-        )
+          (item) => item.name === "AnotherCompany",
+        ),
       ).toMatchInlineSnapshot(`
 {
   "declaration": {
@@ -235,15 +236,15 @@ describe("codegen", () => {
           }
 
           type AnotherCompany = Company
-        `
+        `,
       )
 
       const result = parse(project)
 
       expect(
         result[0]?.typeDeclarations.find(
-          (item) => item.name === "AnotherCompany"
-        )
+          (item) => item.name === "AnotherCompany",
+        ),
       ).toMatchInlineSnapshot(`
 {
   "declaration": {
@@ -267,13 +268,13 @@ describe("codegen", () => {
             interface MyInterface {
                 myProperty: Cool;
             }
-          `
+          `,
       )
 
       const result = parse(project)
 
       expect(
-        result[0]?.typeDeclarations.find((item) => item.name === "MyInterface")
+        result[0]?.typeDeclarations.find((item) => item.name === "MyInterface"),
       ).toMatchInlineSnapshot(`
 {
   "declaration": {
@@ -313,13 +314,13 @@ describe("codegen", () => {
             interface MyInterface {
                 myProperty: AvailableProperty;
             }
-          `
+          `,
     )
 
     const result = parse(project)
 
     expect(
-      result[0]?.typeDeclarations.find((item) => item.name === "MyInterface")
+      result[0]?.typeDeclarations.find((item) => item.name === "MyInterface"),
     ).toMatchInlineSnapshot(`
 {
   "declaration": {
@@ -358,7 +359,7 @@ describe("codegen", () => {
           declare const getUser: () => Promise<FullUser> | undefined
       
           type User = Awaited<ReturnType<typeof getUser>>
-        `
+        `,
       )
 
       const result = parse(project)
@@ -390,7 +391,7 @@ describe("codegen", () => {
           declare const getUser: () => Promise<FullUser> | undefined
       
           type User = Awaited<ReturnType<typeof getUser>>
-        `
+        `,
       )
 
       const result = parse(project)
@@ -424,71 +425,72 @@ describe("codegen", () => {
         interface AuthenticatedUser {
           companies: Company[]
         }
-      `
+      `,
     )
 
     const result = parse(project)
 
     expect(result).toMatchInlineSnapshot(`
-[
-  {
-    "name": "test.ts",
-    "path": "/test.ts",
-    "typeDeclarations": [
-      {
-        "declaration": {
-          "properties": [
+      [
+        {
+          "name": "test.ts",
+          "path": "/test.ts",
+          "type": "file",
+          "typeDeclarations": [
             {
-              "name": "id",
-              "optional": false,
-              "property": {
-                "type": "number",
+              "declaration": {
+                "properties": [
+                  {
+                    "name": "id",
+                    "optional": false,
+                    "property": {
+                      "type": "number",
+                    },
+                    "type": "objectProperty",
+                  },
+                  {
+                    "name": "name",
+                    "optional": false,
+                    "property": {
+                      "type": "number",
+                    },
+                    "type": "objectProperty",
+                  },
+                ],
+                "type": "object",
               },
-              "type": "objectProperty",
+              "exported": false,
+              "name": "Company",
+              "type": "declaration",
             },
             {
-              "name": "name",
-              "optional": false,
-              "property": {
-                "type": "number",
+              "declaration": {
+                "properties": [
+                  {
+                    "name": "companies",
+                    "optional": false,
+                    "property": {
+                      "elements": {
+                        "reference": "Company",
+                        "type": "reference",
+                      },
+                      "readonly": false,
+                      "tuple": false,
+                      "type": "array",
+                    },
+                    "type": "objectProperty",
+                  },
+                ],
+                "type": "object",
               },
-              "type": "objectProperty",
+              "exported": false,
+              "name": "AuthenticatedUser",
+              "type": "declaration",
             },
           ],
-          "type": "object",
         },
-        "exported": false,
-        "name": "Company",
-        "type": "declaration",
-      },
-      {
-        "declaration": {
-          "properties": [
-            {
-              "name": "companies",
-              "optional": false,
-              "property": {
-                "elements": {
-                  "reference": "Company",
-                  "type": "reference",
-                },
-                "readonly": false,
-                "tuple": false,
-                "type": "array",
-              },
-              "type": "objectProperty",
-            },
-          ],
-          "type": "object",
-        },
-        "exported": false,
-        "name": "AuthenticatedUser",
-        "type": "declaration",
-      },
-    ],
-  },
-]
-`)
+      ]
+    `)
   })
   it("should correctly parse NonNullable utility type with unknown", () => {
     const project = new Project({ useInMemoryFileSystem: true })
@@ -497,29 +499,30 @@ describe("codegen", () => {
       "test.ts",
       dedent`
         type Bar = NonNullable<unknown>;
-      `
+      `,
     )
 
     const result = parse(project)
 
     expect(result).toMatchInlineSnapshot(`
-[
-  {
-    "name": "test.ts",
-    "path": "/test.ts",
-    "typeDeclarations": [
-      {
-        "declaration": {
-          "properties": [],
-          "type": "object",
+      [
+        {
+          "name": "test.ts",
+          "path": "/test.ts",
+          "type": "file",
+          "typeDeclarations": [
+            {
+              "declaration": {
+                "properties": [],
+                "type": "object",
+              },
+              "exported": false,
+              "name": "Bar",
+              "type": "declaration",
+            },
+          ],
         },
-        "exported": false,
-        "name": "Bar",
-        "type": "declaration",
-      },
-    ],
-  },
-]
-`)
+      ]
+    `)
   })
 })

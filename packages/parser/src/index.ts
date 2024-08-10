@@ -20,10 +20,10 @@ const getNameFromNode = (node: Node) => {
   return node.isKind(SyntaxKind.InterfaceDeclaration)
     ? node.getName()
     : node.isKind(SyntaxKind.TypeReference)
-    ? node.getTypeName().getText()
-    : node.isKind(SyntaxKind.TypeAliasDeclaration)
-    ? node.getName()
-    : "unknown"
+      ? node.getTypeName().getText()
+      : node.isKind(SyntaxKind.TypeAliasDeclaration)
+        ? node.getName()
+        : "unknown"
 }
 
 const findType = (type: Type) => {
@@ -61,7 +61,7 @@ const findType = (type: Type) => {
     .filter((key) => type[key]())
     .reduce(
       (acc, key) => ({ ...acc, [key]: true }),
-      {} as Partial<Record<(typeof keys)[number], boolean>>
+      {} as Partial<Record<(typeof keys)[number], boolean>>,
     )
 }
 
@@ -218,7 +218,7 @@ export type Entity =
 const parseType = (
   type: Type,
   node?: Node,
-  program?: Program
+  program?: Program,
 ): Exclude<Entity, DeclarationEntity> => {
   const typeChecker = program?.getTypeChecker()
   const aliasSymbol = type.getAliasSymbol()
@@ -268,8 +268,8 @@ const parseType = (
 
     const matchingDeclaration = declarations.find((declaration) =>
       aliasDeclarations.some(
-        (aliasDeclaration) => aliasDeclaration !== declaration
-      )
+        (aliasDeclaration) => aliasDeclaration !== declaration,
+      ),
     )
 
     if (!matchingDeclaration) {
@@ -303,11 +303,12 @@ const parseType = (
         type.compilerType
           .getProperties()
           .filter((property) =>
-            tupleIndexes.includes(property.escapedName as string)
+            tupleIndexes.includes(property.escapedName as string),
           )
           .map(
-            (typeSymbol) => (typeSymbol.getFlags() & SymbolFlags.Optional) !== 0
-          )
+            (typeSymbol) =>
+              (typeSymbol.getFlags() & SymbolFlags.Optional) !== 0,
+          ),
       )
 
     return {
@@ -330,13 +331,14 @@ const parseType = (
   console.log(
     "Is type reference ",
     isTypeReference(type),
-    symbol,
-    symbol && symbol.getFlags() & SymbolFlags.TypeAliasExcludes
+    symbol?.getFlags(),
+    symbol && symbol.getFlags() & SymbolFlags.TypeAliasExcludes,
   )
   if ((isTypeReference(type) || symbol) && node === undefined) {
     const [declaration] = type.getSymbolOrThrow().getDeclarations() ?? []
 
     if (declaration) {
+      console.log("First declaration", declaration.getText())
       return {
         type: "reference" as const,
         reference: getNameFromNode(declaration),
@@ -482,12 +484,6 @@ const parseType = (
   //   return type.getText();
   // }
 
-  if (type.isUnknown()) {
-    return {
-      type: "unknown" as const,
-    }
-  }
-
   if (type.isUndefined()) {
     return {
       type: "literal" as const,
@@ -514,7 +510,7 @@ const parseType = (
 
 const parseTypeDeclaration = (
   typeDeclaration: TypeAliasDeclaration | InterfaceDeclaration,
-  program: Program
+  program: Program,
 ): DeclarationEntity => {
   const type = typeDeclaration.getType()
 
@@ -544,8 +540,8 @@ const parseSourceFile = (sourceFile: SourceFile, program: Program) => {
       (statement): statement is TypeAliasDeclaration | InterfaceDeclaration =>
         Boolean(
           statement.asKind(SyntaxKind.TypeAliasDeclaration) ||
-            statement.asKind(SyntaxKind.InterfaceDeclaration)
-        )
+            statement.asKind(SyntaxKind.InterfaceDeclaration),
+        ),
     )
 
   return {
@@ -553,7 +549,7 @@ const parseSourceFile = (sourceFile: SourceFile, program: Program) => {
     name: sourceFile.getBaseName(),
     path: sourceFile.getFilePath() as string,
     typeDeclarations: typeDeclarations.map((declaration) =>
-      parseTypeDeclaration(declaration, program)
+      parseTypeDeclaration(declaration, program),
     ),
   }
 }
@@ -562,5 +558,20 @@ export function parse(project: Project) {
   const sourceFiles = project.getSourceFiles()
   const program = project.getProgram()
 
-  return sourceFiles.map((sourceFile) => parseSourceFile(sourceFile, program))
+  return sourceFiles
+    .filter((sourceFile) =>
+      process.env.NODE_ENV !== "test"
+        ? sourceFile.getFilePath().includes("generated/review-management.ts")
+        : true,
+    )
+    .map((sourceFile) => parseSourceFile(sourceFile, program))
+}
+
+if (process.env.NODE_ENV !== "test") {
+  const project = new Project({
+    tsConfigFilePath: "/Users/simon.johansson/repos/product-web/tsconfig.json",
+  })
+
+  console.log(JSON.stringify(parse(project), null, 2))
+  // // codegen(project);
 }
