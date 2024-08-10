@@ -1,6 +1,6 @@
 import { Project } from "ts-morph"
 import { parse } from "./index.js"
-import { describe, it, expect } from "@jest/globals"
+import { describe, it, expect } from "vitest"
 import dedent from "ts-dedent"
 
 describe("codegen", () => {
