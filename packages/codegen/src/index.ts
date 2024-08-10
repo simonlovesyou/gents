@@ -135,78 +135,9 @@ const declarationNameGenerator = (name: string) =>
   `${name.charAt(0).toLowerCase()}${name.slice(1)}`
 
 const next = (context: Context<Entity>, entity: Entity) => {
-  if (entity.type === "declaration") {
-    const createdHints = generators.declaration.hints
-      ?.filter((hint) => hint.create(entity))
-      .map((hint) => hint.name)
-    return generators.declaration.create(entity, {
-      ...context,
-      hints: createdHints ?? [],
-    })
-  }
-  if (entity.type === "reference") {
-    return generators.reference.create(entity, context)
-  }
-  if (entity.type === "anonymous") {
-    return generators.anonymous.create(entity, context)
-  }
-  if (entity.type === "any") {
-    return generators.any.create(entity, context)
-  }
-  if (entity.type === "array") {
-    return generators.array.create(entity, context)
-  }
-  if (entity.type === "alias") {
-    return generators.alias.create(entity, context)
-  }
-  if (entity.type === "boolean") {
-    return generators.boolean.create(entity, context)
-  }
-  if (entity.type === "booleanLiteral") {
-    return generators.booleanLiteral.create(entity, context)
-  }
-  if (entity.type === "number") {
-    return generators.number.create(entity, context)
-  }
-  if (entity.type === "objectProperty") {
-    const createdHints = generators.objectProperty.hints
-      ?.filter((profile) => profile.create(entity))
-      .map((profile) => profile.name)
-    return generators.objectProperty.create(entity, {
-      ...context,
-      hints: [...(context.hints ?? []), ...(createdHints ?? [])],
-    })
-  }
-  if (entity.type === "object") {
-    return generators.object.create(entity, context)
-  }
-  if (entity.type === "string") {
-    return generators.string.create(entity, context)
-  }
-  if (entity.type === "enumLiteral") {
-    return generators.enumLiteral.create(entity, context)
-  }
-  if (entity.type === "never") {
-    return generators.never.create(entity, context)
-  }
-  if (entity.type === "literal") {
-    return generators.literal.create(entity, context)
-  }
-  if (entity.type === "union") {
-    return generators.union.create(entity, context)
-  }
-  if (entity.type === "enum") {
-    return generators.enum.create(entity, context)
-  }
-  if (entity.type === "unknown") {
-    return generators.unknown.create(entity, context)
-  }
-  if (entity.type === "utility") {
-    return generators.utility.create(entity, context)
-  }
-  if (entity.type === "intersection") {
-    return generators.intersection.create(entity, context)
-  }
+  return generators[entity.type].create(entity as any, {
+    ...context,
+  })
   throw new TypeError(
     // @ts-ignore
     `Could not find generator for entity type "${entity.type}"`,
