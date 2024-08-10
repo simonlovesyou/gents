@@ -5,6 +5,8 @@
     "allowJs": true,
     "moduleDetection": "force",
     "isolatedModules": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
 
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -25,6 +27,6 @@
 
     "lib": ["ESNext"]
   },
-  "include": ["./src/*.ts"],
+  "include": ["./src/**/*.ts"],
   "exclude": ["./src/*.spec.ts"]
 }
