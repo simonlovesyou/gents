@@ -151,6 +151,11 @@ const identifierHints = [
         : undefined,
   },
   {
+    name: "id",
+    create: (entity: DeclarationEntity | ObjectPropertyEntity) =>
+      isOneOfCaseInsensitive(["id", "uuid"], entity.name) ? "id" : undefined,
+  },
+  {
     name: "currencyCode",
     create: (
       entity: DeclarationEntity | ObjectPropertyEntity,
@@ -571,6 +576,27 @@ export const generators: Generators = {
               factory.createIdentifier("finance")
             ),
             factory.createIdentifier("currencyCode")
+          ),
+          undefined,
+          []
+        )
+      }
+      const idHint = context.hints.find(
+        (hint) => hint.name === "id" && hint.level === 1
+      )
+      if (idHint) {
+        return factory.createCallExpression(
+          factory.createPropertyAccessExpression(
+            factory.createPropertyAccessExpression(
+              createIdentifierImport(
+                "faker",
+                "@faker-js/faker",
+                { named: true },
+                context
+              ),
+              factory.createIdentifier("string")
+            ),
+            factory.createIdentifier("uuid")
           ),
           undefined,
           []

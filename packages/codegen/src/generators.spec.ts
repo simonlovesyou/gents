@@ -210,6 +210,30 @@ describe("generators", () => {
           )
         })
       })
+      describe("id", () => {
+        it("should use the correct string faker module & method to generate an id", () => {
+          const result = generators.string.create(
+            { type: "string" },
+            {
+              next: (() => {}) as any,
+              parentEntity: {
+                type: "file",
+                name: "foo",
+                path: "./foo.ts",
+                typeDeclarations: [],
+              },
+              generators: {} as unknown as typeof generators,
+              fileEntity: undefined as unknown as FileEntity,
+              hints: [{ name: "id", value: "name", level: 1 }],
+              addImportDeclaration: () => {},
+            }
+          )
+
+          expect(printNode(result)).toMatchInlineSnapshot(
+            `"faker.string.uuid()"`
+          )
+        })
+      })
     })
   })
 })
