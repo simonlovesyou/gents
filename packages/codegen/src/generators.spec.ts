@@ -50,6 +50,7 @@ describe("generators", () => {
               undefined,
               undefined,
               undefined,
+              undefined,
             ]
           `)
         })
@@ -68,6 +69,7 @@ describe("generators", () => {
             )
           ).toMatchInlineSnapshot(`
             [
+              undefined,
               undefined,
               undefined,
               undefined,
@@ -100,6 +102,7 @@ describe("generators", () => {
               undefined,
               undefined,
               undefined,
+              undefined,
               "currencyCode",
             ]
           `)
@@ -127,6 +130,32 @@ describe("generators", () => {
               "name",
               undefined,
               undefined,
+              undefined,
+              undefined,
+            ]
+          `)
+        })
+        it('should generate the correct hints for object property "url"', () => {
+          expect(
+            generators.objectProperty.hints?.map((hint) =>
+              hint.create(
+                {
+                  type: "objectProperty" as const,
+                  name: "url",
+                  property: { type: "string" },
+                  optional: true,
+                },
+                defaultContext
+              )
+            )
+          ).toMatchInlineSnapshot(`
+            [
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              "url",
               undefined,
             ]
           `)
@@ -231,6 +260,30 @@ describe("generators", () => {
 
           expect(printNode(result)).toMatchInlineSnapshot(
             `"faker.string.uuid()"`
+          )
+        })
+      })
+      describe("url", () => {
+        it("should use the correct internet faker module & method to generate an url", () => {
+          const result = generators.string.create(
+            { type: "string" },
+            {
+              next: (() => {}) as any,
+              parentEntity: {
+                type: "file",
+                name: "foo",
+                path: "./foo.ts",
+                typeDeclarations: [],
+              },
+              generators: {} as unknown as typeof generators,
+              fileEntity: undefined as unknown as FileEntity,
+              hints: [{ name: "url", value: "url", level: 1 }],
+              addImportDeclaration: () => {},
+            }
+          )
+
+          expect(printNode(result)).toMatchInlineSnapshot(
+            `"faker.internet.url()"`
           )
         })
       })
