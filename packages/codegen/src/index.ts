@@ -79,11 +79,12 @@ export type Context<TEntity extends Entity> = {
     typeDeclarations: DeclarationEntity[]
   }
   next: (context: Context<TEntity>, entity: Entity) => ts.Node
+  hints: string[]
   generators: Generators
   addImportDeclaration: (importSpecifier: ImportSpecifier) => void
 }
 
-interface Profile<T extends Entity> {
+interface Hint<T extends Entity> {
   name: string
   create: (entity: T) => boolean
 }
@@ -95,7 +96,7 @@ type CreateEntity<T extends Entity> = (
 
 interface Generator<T extends Entity> {
   create: CreateEntity<T>
-  profiles?: Array<Profile<T>>
+  hints?: Array<Hint<T>>
 }
 
 export type Generators = {
@@ -133,7 +134,13 @@ const declarationNameGenerator = (name: string) =>
 
 const next = (context: Context<Entity>, entity: Entity) => {
   if (entity.type === "declaration") {
-    return generators.declaration.create(entity, context)
+    const createdHints = generators.declaration.hints
+      ?.filter((hint) => hint.create(entity))
+      .map((hint) => hint.name)
+    return generators.declaration.create(entity, {
+      ...context,
+      hints: createdHints ?? [],
+    })
   }
   if (entity.type === "reference") {
     return generators.reference.create(entity, context)
@@ -160,7 +167,13 @@ const next = (context: Context<Entity>, entity: Entity) => {
     return generators.number.create(entity, context)
   }
   if (entity.type === "objectProperty") {
-    return generators.objectProperty.create(entity, context)
+    const createdHints = generators.objectProperty.hints
+      ?.filter((profile) => profile.create(entity))
+      .map((profile) => profile.name)
+    return generators.objectProperty.create(entity, {
+      ...context,
+      hints: [...(context.hints ?? []), ...(createdHints ?? [])],
+    })
   }
   if (entity.type === "object") {
     return generators.object.create(entity, context)

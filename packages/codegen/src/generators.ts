@@ -99,6 +99,12 @@ export const generators: Generators = {
           ]
         )
       ),
+    hints: [
+      {
+        name: "company",
+        create: (entity) => entity.name.toLowerCase().includes("company"),
+      },
+    ],
   },
   enumLiteral: { create: () => factory.createStringLiteral("enumLiteral") },
   never: { create: () => factory.createStringLiteral("any") },
@@ -419,6 +425,24 @@ export const generators: Generators = {
   },
   string: {
     create: (entity, context) => {
+      if (context.hints.includes("company")) {
+        return factory.createCallExpression(
+          factory.createPropertyAccessExpression(
+            factory.createPropertyAccessExpression(
+              createIdentifierImport(
+                "faker",
+                "@faker-js/faker",
+                { named: true },
+                context
+              ),
+              factory.createIdentifier("string")
+            ),
+            factory.createIdentifier("uuid")
+          ),
+          undefined,
+          []
+        )
+      }
       if ("name" in context.parentEntity) {
         const name = context.parentEntity.name
         if (name.toLowerCase().includes("id")) {
