@@ -53,6 +53,57 @@ describe("generators", () => {
             ]
           `)
         })
+        it('should generate the correct hints for object property "currencyCode"', () => {
+          expect(
+            generators.objectProperty.hints?.map((hint) =>
+              hint.create(
+                {
+                  type: "objectProperty" as const,
+                  name: "currencyCode",
+                  property: { type: "string" },
+                  optional: true,
+                },
+                defaultContext
+              )
+            )
+          ).toMatchInlineSnapshot(`
+            [
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              "currencyCode",
+            ]
+          `)
+        })
+        it('should generate the correct hints for object property "code" & there is a parent "currency" hint', () => {
+          expect(
+            generators.objectProperty.hints?.map((hint) =>
+              hint.create(
+                {
+                  type: "objectProperty" as const,
+                  name: "code",
+                  property: { type: "string" },
+                  optional: true,
+                },
+                {
+                  ...defaultContext,
+                  hints: [{ name: "currency", level: 1, value: "currency" }],
+                }
+              )
+            )
+          ).toMatchInlineSnapshot(`
+            [
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              "currencyCode",
+            ]
+          `)
+        })
         it('should generate the correct hints for object property "merchantName" & there is a parent "company" hint', () => {
           expect(
             generators.objectProperty.hints?.map((hint) =>
@@ -130,6 +181,32 @@ describe("generators", () => {
 
           expect(printNode(result)).toMatchInlineSnapshot(
             `"faker.company.name()"`
+          )
+        })
+      })
+      describe("currencyCode", () => {
+        it("should use the correct finance faker module & method to generate a currency code", () => {
+          const result = generators.string.create(
+            { type: "string" },
+            {
+              next: (() => {}) as any,
+              parentEntity: {
+                type: "file",
+                name: "foo",
+                path: "./foo.ts",
+                typeDeclarations: [],
+              },
+              generators: {} as unknown as typeof generators,
+              fileEntity: undefined as unknown as FileEntity,
+              hints: [
+                { name: "currencyCode", value: "currencyCode", level: 1 },
+              ],
+              addImportDeclaration: () => {},
+            }
+          )
+
+          expect(printNode(result)).toMatchInlineSnapshot(
+            `"faker.finance.currencyCode()"`
           )
         })
       })

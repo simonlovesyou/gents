@@ -143,6 +143,27 @@ const identifierHints = [
                   : undefined
                 : undefined,
   },
+  {
+    name: "currency",
+    create: (entity: DeclarationEntity | ObjectPropertyEntity) =>
+      ["currency", "money"].includes(entity.name.toLowerCase())
+        ? "currency"
+        : undefined,
+  },
+  {
+    name: "currencyCode",
+    create: (
+      entity: DeclarationEntity | ObjectPropertyEntity,
+      context: Context<DeclarationEntity | ObjectPropertyEntity>
+    ) =>
+      isOneOfCaseInsensitive(["currencyCode", "currencyUnit"], entity.name) ||
+      (context.hints.some(
+        (hint) => hint.name === "currency" && hint.level <= 1
+      ) &&
+        isOneOfCaseInsensitive(["code"], entity.name))
+        ? "currencyCode"
+        : undefined,
+  },
 ]
 export const generators: Generators = {
   anonymous: { create: () => factory.createStringLiteral("anonymous") },
@@ -532,6 +553,27 @@ export const generators: Generators = {
           ),
           undefined,
           [],
+        )
+      }
+      const currencyCodeHint = context.hints.find(
+        (hint) => hint.name === "currencyCode" && hint.level <= 1
+      )
+      if (currencyCodeHint) {
+        return factory.createCallExpression(
+          factory.createPropertyAccessExpression(
+            factory.createPropertyAccessExpression(
+              createIdentifierImport(
+                "faker",
+                "@faker-js/faker",
+                { named: true },
+                context
+              ),
+              factory.createIdentifier("finance")
+            ),
+            factory.createIdentifier("currencyCode")
+          ),
+          undefined,
+          []
         )
       }
       return factory.createCallExpression(
