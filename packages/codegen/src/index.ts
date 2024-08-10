@@ -74,6 +74,8 @@ type ImportSpecifier = {
 
 export type Context<TEntity extends Entity> = {
   parentEntity: Entity
+  parentDeclarationEntity?: DeclarationEntity
+  closestIdentifer?: DeclarationEntity | ObjectPropertyEntity
   fileEntity: {
     name: string
     path: string
@@ -129,12 +131,13 @@ type Options = {
   declarationNameGenerator?: (name: string) => string
   fileNameGenerator?: (fileName: string) => string
   consolidateTypeImports?: boolean
+  project?: Project
 }
 
 const declarationNameGenerator = (name: string) =>
   `${name.charAt(0).toLowerCase()}${name.slice(1)}`
 
-const next = (context: Context<Entity>, entity: Entity) => {
+export const next = (context: Context<Entity>, entity: Entity) => {
   const incrementedHints = context.hints.map((hint) => ({
     ...hint,
     level:
@@ -161,7 +164,7 @@ const next = (context: Context<Entity>, entity: Entity) => {
         }
         return accumulatingHints
       },
-      []
+      [],
     ) ?? []
 
   return generators[entity.type].create(entity as any, {

@@ -164,11 +164,11 @@ const identifierHints = [
     name: "currencyCode",
     create: (
       entity: DeclarationEntity | ObjectPropertyEntity,
-      context: Context<DeclarationEntity | ObjectPropertyEntity>
+      context: Context<DeclarationEntity | ObjectPropertyEntity>,
     ) =>
       isOneOfCaseInsensitive(["currencyCode", "currencyUnit"], entity.name) ||
       (context.hints.some(
-        (hint) => hint.name === "currency" && hint.level <= 1
+        (hint) => hint.name === "currency" && hint.level <= 1,
       ) &&
         isOneOfCaseInsensitive(["code"], entity.name))
         ? "currencyCode"
@@ -192,6 +192,7 @@ export const generators: Generators = {
             {
               ...context,
               parentEntity: entity,
+              closestIdentifer: entity,
             },
             entity.property,
           ),
@@ -215,7 +216,7 @@ export const generators: Generators = {
     },
   },
   alias: {
-    create: (entity, context) => {
+    create: (entity) => {
       return factory.createCallExpression(
         factory.createIdentifier(
           camelcase(generateDeclarationName(entity.alias)),
@@ -420,6 +421,8 @@ export const generators: Generators = {
                               {
                                 ...context,
                                 parentEntity: entity,
+                                parentDeclarationEntity: entity,
+                                closestIdentifer: entity,
                               },
                               entity.declaration,
                             ),
@@ -453,6 +456,8 @@ export const generators: Generators = {
                           {
                             ...context,
                             parentEntity: entity,
+                            parentDeclarationEntity: entity,
+                            closestIdentifer: entity,
                           },
                           entity.declaration,
                         ),
@@ -571,7 +576,7 @@ export const generators: Generators = {
         )
       }
       const currencyCodeHint = context.hints.find(
-        (hint) => hint.name === "currencyCode" && hint.level <= 1
+        (hint) => hint.name === "currencyCode" && hint.level <= 1,
       )
       if (currencyCodeHint) {
         return factory.createCallExpression(
@@ -581,18 +586,18 @@ export const generators: Generators = {
                 "faker",
                 "@faker-js/faker",
                 { named: true },
-                context
+                context,
               ),
-              factory.createIdentifier("finance")
+              factory.createIdentifier("finance"),
             ),
-            factory.createIdentifier("currencyCode")
+            factory.createIdentifier("currencyCode"),
           ),
           undefined,
-          []
+          [],
         )
       }
       const idHint = context.hints.find(
-        (hint) => hint.name === "id" && hint.level === 1
+        (hint) => hint.name === "id" && hint.level === 1,
       )
       if (idHint) {
         return factory.createCallExpression(
@@ -602,19 +607,19 @@ export const generators: Generators = {
                 "faker",
                 "@faker-js/faker",
                 { named: true },
-                context
+                context,
               ),
-              factory.createIdentifier("string")
+              factory.createIdentifier("string"),
             ),
-            factory.createIdentifier("uuid")
+            factory.createIdentifier("uuid"),
           ),
           undefined,
-          []
+          [],
         )
       }
 
       const urlHint = context.hints.find(
-        (hint) => hint.name === "url" && hint.level === 1
+        (hint) => hint.name === "url" && hint.level <= 1,
       )
       if (urlHint) {
         const avatarHint = context.hints.find(
@@ -628,14 +633,14 @@ export const generators: Generators = {
                   "faker",
                   "@faker-js/faker",
                   { named: true },
-                  context
+                  context,
                 ),
-                factory.createIdentifier("image")
+                factory.createIdentifier("image"),
               ),
-              factory.createIdentifier("avatar")
+              factory.createIdentifier("avatar"),
             ),
             undefined,
-            []
+            [],
           )
         }
 
@@ -646,18 +651,18 @@ export const generators: Generators = {
                 "faker",
                 "@faker-js/faker",
                 { named: true },
-                context
+                context,
               ),
-              factory.createIdentifier("internet")
+              factory.createIdentifier("internet"),
             ),
-            factory.createIdentifier("url")
+            factory.createIdentifier("url"),
           ),
           undefined,
-          []
+          [],
         )
       }
       const avatarHint = context.hints.find(
-        (hint) => hint.name === "avatar" && hint.level === 1
+        (hint) => hint.name === "avatar" && hint.level <= 3,
       )
 
       if (avatarHint) {
@@ -668,14 +673,14 @@ export const generators: Generators = {
                 "faker",
                 "@faker-js/faker",
                 { named: true },
-                context
+                context,
               ),
-              factory.createIdentifier("image")
+              factory.createIdentifier("image"),
             ),
-            factory.createIdentifier("avatar")
+            factory.createIdentifier("avatar"),
           ),
           undefined,
-          []
+          [],
         )
       }
       return factory.createCallExpression(

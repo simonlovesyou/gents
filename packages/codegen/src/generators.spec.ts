@@ -21,7 +21,7 @@ describe("generators", () => {
     it("should by default create `faker.string.alpha()` call expression", () => {
       const result = generators.string.create(
         { type: "string" },
-        defaultContext
+        defaultContext,
       )
 
       expect(printNode(result)).toMatchInlineSnapshot(`"faker.string.alpha()"`)
@@ -39,9 +39,9 @@ describe("generators", () => {
                   property: { type: "string" },
                   optional: true,
                 },
-                defaultContext
-              )
-            )
+                defaultContext,
+              ),
+            ),
           ).toMatchInlineSnapshot(`
             [
               "company",
@@ -65,9 +65,9 @@ describe("generators", () => {
                   property: { type: "string" },
                   optional: true,
                 },
-                defaultContext
-              )
-            )
+                defaultContext,
+              ),
+            ),
           ).toMatchInlineSnapshot(`
             [
               undefined,
@@ -94,9 +94,9 @@ describe("generators", () => {
                 {
                   ...defaultContext,
                   hints: [{ name: "currency", level: 1, value: "currency" }],
-                }
-              )
-            )
+                },
+              ),
+            ),
           ).toMatchInlineSnapshot(`
             [
               undefined,
@@ -123,9 +123,9 @@ describe("generators", () => {
                 {
                   ...defaultContext,
                   hints: [{ name: "company", level: 1, value: "company" }],
-                }
-              )
-            )
+                },
+              ),
+            ),
           ).toMatchInlineSnapshot(`
             [
               "company",
@@ -149,9 +149,9 @@ describe("generators", () => {
                   property: { type: "string" },
                   optional: true,
                 },
-                defaultContext
-              )
-            )
+                defaultContext,
+              ),
+            ),
           ).toMatchInlineSnapshot(`
             [
               undefined,
@@ -184,7 +184,7 @@ describe("generators", () => {
                 fileEntity: undefined as unknown as FileEntity,
                 hints: [{ name: "name", value: hintValue, level: 1 }],
                 addImportDeclaration: () => {},
-              }
+              },
             )
 
             expect(printNode(result)).toBe(`faker.person.${hintValue}()`)
@@ -210,11 +210,11 @@ describe("generators", () => {
                 { name: "company", value: "company", level: 1 },
               ],
               addImportDeclaration: () => {},
-            }
+            },
           )
 
           expect(printNode(result)).toMatchInlineSnapshot(
-            `"faker.company.name()"`
+            `"faker.company.name()"`,
           )
         })
       })
@@ -236,11 +236,11 @@ describe("generators", () => {
                 { name: "currencyCode", value: "currencyCode", level: 1 },
               ],
               addImportDeclaration: () => {},
-            }
+            },
           )
 
           expect(printNode(result)).toMatchInlineSnapshot(
-            `"faker.finance.currencyCode()"`
+            `"faker.finance.currencyCode()"`,
           )
         })
       })
@@ -260,11 +260,11 @@ describe("generators", () => {
               fileEntity: undefined as unknown as FileEntity,
               hints: [{ name: "id", value: "name", level: 1 }],
               addImportDeclaration: () => {},
-            }
+            },
           )
 
           expect(printNode(result)).toMatchInlineSnapshot(
-            `"faker.string.uuid()"`
+            `"faker.string.uuid()"`,
           )
         })
       })
@@ -284,11 +284,11 @@ describe("generators", () => {
               fileEntity: undefined as unknown as FileEntity,
               hints: [{ name: "url", value: "url", level: 1 }],
               addImportDeclaration: () => {},
-            }
+            },
           )
 
           expect(printNode(result)).toMatchInlineSnapshot(
-            `"faker.internet.url()"`
+            `"faker.internet.url()"`,
           )
         })
       })
@@ -311,11 +311,11 @@ describe("generators", () => {
                 { name: "avatar", value: "avatar", level: 2 },
               ],
               addImportDeclaration: () => {},
-            }
+            },
           )
 
           expect(printNode(result)).toMatchInlineSnapshot(
-            `"faker.image.avatar()"`
+            `"faker.image.avatar()"`,
           )
         })
       })
@@ -335,11 +335,11 @@ describe("generators", () => {
               fileEntity: undefined as unknown as FileEntity,
               hints: [{ name: "avatar", value: "avatar", level: 1 }],
               addImportDeclaration: () => {},
-            }
+            },
           )
 
           expect(printNode(result)).toMatchInlineSnapshot(
-            `"faker.image.avatar()"`
+            `"faker.image.avatar()"`,
           )
         })
       })
