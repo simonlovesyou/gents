@@ -174,6 +174,11 @@ const identifierHints = [
         ? "currencyCode"
         : undefined,
   },
+  {
+    name: "avatar",
+    create: (entity: DeclarationEntity | ObjectPropertyEntity) =>
+      isOneOfCaseInsensitive(["avatar"], entity.name) ? "avatar" : undefined,
+  },
 ]
 export const generators: Generators = {
   anonymous: { create: () => factory.createStringLiteral("anonymous") },
@@ -607,10 +612,33 @@ export const generators: Generators = {
           []
         )
       }
+
       const urlHint = context.hints.find(
         (hint) => hint.name === "url" && hint.level === 1
       )
       if (urlHint) {
+        const avatarHint = context.hints.find(
+          (hint) => hint.name === "avatar" && hint.level <= urlHint.level + 2,
+        )
+        if (avatarHint) {
+          return factory.createCallExpression(
+            factory.createPropertyAccessExpression(
+              factory.createPropertyAccessExpression(
+                createIdentifierImport(
+                  "faker",
+                  "@faker-js/faker",
+                  { named: true },
+                  context
+                ),
+                factory.createIdentifier("image")
+              ),
+              factory.createIdentifier("avatar")
+            ),
+            undefined,
+            []
+          )
+        }
+
         return factory.createCallExpression(
           factory.createPropertyAccessExpression(
             factory.createPropertyAccessExpression(
@@ -623,6 +651,28 @@ export const generators: Generators = {
               factory.createIdentifier("internet")
             ),
             factory.createIdentifier("url")
+          ),
+          undefined,
+          []
+        )
+      }
+      const avatarHint = context.hints.find(
+        (hint) => hint.name === "avatar" && hint.level === 1
+      )
+
+      if (avatarHint) {
+        return factory.createCallExpression(
+          factory.createPropertyAccessExpression(
+            factory.createPropertyAccessExpression(
+              createIdentifierImport(
+                "faker",
+                "@faker-js/faker",
+                { named: true },
+                context
+              ),
+              factory.createIdentifier("image")
+            ),
+            factory.createIdentifier("avatar")
           ),
           undefined,
           []

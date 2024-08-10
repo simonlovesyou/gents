@@ -51,6 +51,7 @@ describe("generators", () => {
               undefined,
               undefined,
               undefined,
+              undefined,
             ]
           `)
         })
@@ -76,6 +77,7 @@ describe("generators", () => {
               undefined,
               undefined,
               "currencyCode",
+              undefined,
             ]
           `)
         })
@@ -104,6 +106,7 @@ describe("generators", () => {
               undefined,
               undefined,
               "currencyCode",
+              undefined,
             ]
           `)
         })
@@ -132,6 +135,7 @@ describe("generators", () => {
               undefined,
               undefined,
               undefined,
+              undefined,
             ]
           `)
         })
@@ -156,6 +160,7 @@ describe("generators", () => {
               undefined,
               undefined,
               "url",
+              undefined,
               undefined,
             ]
           `)
@@ -284,6 +289,57 @@ describe("generators", () => {
 
           expect(printNode(result)).toMatchInlineSnapshot(
             `"faker.internet.url()"`
+          )
+        })
+      })
+      describe("url & avatar", () => {
+        it("should use the correct image faker module & method to generate an avatar", () => {
+          const result = generators.string.create(
+            { type: "string" },
+            {
+              next: (() => {}) as any,
+              parentEntity: {
+                type: "file",
+                name: "foo",
+                path: "./foo.ts",
+                typeDeclarations: [],
+              },
+              generators: {} as unknown as typeof generators,
+              fileEntity: undefined as unknown as FileEntity,
+              hints: [
+                { name: "url", value: "url", level: 1 },
+                { name: "avatar", value: "avatar", level: 2 },
+              ],
+              addImportDeclaration: () => {},
+            }
+          )
+
+          expect(printNode(result)).toMatchInlineSnapshot(
+            `"faker.image.avatar()"`
+          )
+        })
+      })
+      describe("avatar", () => {
+        it("should use the correct image faker module & method to generate an avatar", () => {
+          const result = generators.string.create(
+            { type: "string" },
+            {
+              next: (() => {}) as any,
+              parentEntity: {
+                type: "file",
+                name: "foo",
+                path: "./foo.ts",
+                typeDeclarations: [],
+              },
+              generators: {} as unknown as typeof generators,
+              fileEntity: undefined as unknown as FileEntity,
+              hints: [{ name: "avatar", value: "avatar", level: 1 }],
+              addImportDeclaration: () => {},
+            }
+          )
+
+          expect(printNode(result)).toMatchInlineSnapshot(
+            `"faker.image.avatar()"`
           )
         })
       })
