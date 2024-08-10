@@ -1,5 +1,9 @@
 import type { Generators, Context } from "./index"
-import type { Entity } from "@gents/parser"
+import type {
+  DeclarationEntity,
+  Entity,
+  ObjectPropertyEntity,
+} from "@gents/parser"
 import { NodeFlags, SyntaxKind } from "ts-morph"
 import {
   factory,
@@ -78,6 +82,68 @@ const isOneOfKindOrThrow = <TKind extends SyntaxKind>(
 const generateDeclarationName = (name: string) =>
   `generate${name.charAt(0).toUpperCase()}${name.slice(1)}`
 
+const isOneOfCaseInsensitive = <const T extends string[]>(
+  list: T,
+  value: string,
+): value is T[number] => {
+  const result = list
+    .map((item) => item.toLowerCase())
+    .some((item) => value.toLowerCase().includes(item.toLowerCase()))
+  return result
+}
+
+const identifierHints = [
+  {
+    name: "company",
+    create: (entity: ObjectPropertyEntity | DeclarationEntity) =>
+      isOneOfCaseInsensitive(
+        ["company", "organzation", "merchant"],
+        entity.name,
+      )
+        ? "company"
+        : undefined,
+  },
+  {
+    name: "human",
+    create: (entity: DeclarationEntity | ObjectPropertyEntity) =>
+      isOneOfCaseInsensitive(
+        [
+          "reviewer",
+          "human",
+          "person",
+          "user",
+          "profile",
+          "reviewers",
+          "employee",
+        ],
+        entity.name,
+      )
+        ? "human"
+        : undefined,
+  },
+  {
+    name: "name",
+    create: (
+      entity: DeclarationEntity | ObjectPropertyEntity,
+      context: Context<DeclarationEntity | ObjectPropertyEntity>,
+    ) =>
+      isOneOfCaseInsensitive(["firstName", "givenName"], entity.name)
+        ? "firstName"
+        : isOneOfCaseInsensitive(["lastName", "familyName"], entity.name)
+          ? "lastName"
+          : isOneOfCaseInsensitive(["middleName"], entity.name)
+            ? "middleName"
+            : entity.name === "name" || entity.name === "fullName"
+              ? "fullName"
+              : context.hints.some(
+                    (hint) => hint.name === "company" && hint.level <= 1,
+                  )
+                ? entity.name.toLowerCase().includes("name")
+                  ? "name"
+                  : undefined
+                : undefined,
+  },
+]
 export const generators: Generators = {
   anonymous: { create: () => factory.createStringLiteral("anonymous") },
   any: { create: () => factory.createStringLiteral("any") },
@@ -101,12 +167,7 @@ export const generators: Generators = {
           ],
         ),
       ),
-    hints: [
-      {
-        name: "company",
-        create: (entity) => entity.name.toLowerCase().includes("company"),
-      },
-    ],
+    hints: identifierHints,
   },
   enumLiteral: { create: () => factory.createStringLiteral("enumLiteral") },
   never: { create: () => factory.createStringLiteral("any") },
@@ -395,6 +456,7 @@ export const generators: Generators = {
         ]),
       )
     },
+    hints: identifierHints,
   },
   number: {
     create: (_, context) => {
@@ -447,7 +509,14 @@ export const generators: Generators = {
   },
   string: {
     create: (entity, context) => {
-      if (context.hints.includes("company")) {
+      const nameHint = context.hints.find(
+        (hint) => hint.name === "name" && hint.level <= 1,
+      )
+
+      if (nameHint) {
+        const company = context.hints.find(
+          (hint) => hint.name === "company" && hint.level >= nameHint.level,
+        )
         return factory.createCallExpression(
           factory.createPropertyAccessExpression(
             factory.createPropertyAccessExpression(
@@ -457,52 +526,13 @@ export const generators: Generators = {
                 { named: true },
                 context,
               ),
-              factory.createIdentifier("string"),
+              factory.createIdentifier(company ? "company" : "person"),
             ),
-            factory.createIdentifier("uuid"),
+            factory.createIdentifier(nameHint.value),
           ),
           undefined,
           [],
         )
-      }
-      if ("name" in context.parentEntity) {
-        const name = context.parentEntity.name
-        if (name.toLowerCase().includes("id")) {
-          return factory.createCallExpression(
-            factory.createPropertyAccessExpression(
-              factory.createPropertyAccessExpression(
-                createIdentifierImport(
-                  "faker",
-                  "@faker-js/faker",
-                  { named: true },
-                  context,
-                ),
-                factory.createIdentifier("string"),
-              ),
-              factory.createIdentifier("uuid"),
-            ),
-            undefined,
-            [],
-          )
-        }
-        if (name.toLowerCase().includes("company")) {
-          return factory.createCallExpression(
-            factory.createPropertyAccessExpression(
-              factory.createPropertyAccessExpression(
-                createIdentifierImport(
-                  "faker",
-                  "@faker-js/faker",
-                  { named: true },
-                  context,
-                ),
-                factory.createIdentifier("company"),
-              ),
-              factory.createIdentifier("name"),
-            ),
-            undefined,
-            [],
-          )
-        }
       }
       return factory.createCallExpression(
         factory.createPropertyAccessExpression(

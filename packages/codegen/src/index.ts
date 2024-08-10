@@ -80,14 +80,14 @@ export type Context<TEntity extends Entity> = {
     typeDeclarations: DeclarationEntity[]
   }
   next: (context: Context<TEntity>, entity: Entity) => ts.Node
-  hints: string[]
+  hints: Array<{ name: string; level: number; value: string }>
   generators: Generators
   addImportDeclaration: (importSpecifier: ImportSpecifier) => void
 }
 
 interface Hint<T extends Entity> {
   name: string
-  create: (entity: T) => boolean
+  create: (entity: T, context: Context<T>) => string | undefined
 }
 
 type CreateEntity<T extends Entity> = (
@@ -135,8 +135,38 @@ const declarationNameGenerator = (name: string) =>
   `${name.charAt(0).toLowerCase()}${name.slice(1)}`
 
 const next = (context: Context<Entity>, entity: Entity) => {
+  const incrementedHints = context.hints.map((hint) => ({
+    ...hint,
+    level:
+      hint.level + (entity.type === "array" || entity.type === "union" ? 0 : 1),
+  }))
+
+  const createdHints =
+    generators[entity.type].hints?.reduce(
+      (accumulatingHints: typeof incrementedHints, hint) => {
+        const result = hint.create(entity as any, {
+          ...context,
+          hints: [...incrementedHints, ...accumulatingHints],
+        })
+
+        if (result !== undefined) {
+          return [
+            ...accumulatingHints,
+            {
+              name: hint.name,
+              level: 0,
+              value: result,
+            },
+          ]
+        }
+        return accumulatingHints
+      },
+      []
+    ) ?? []
+
   return generators[entity.type].create(entity as any, {
     ...context,
+    hints: [...createdHints, ...incrementedHints],
   })
   throw new TypeError(
     // @ts-ignore

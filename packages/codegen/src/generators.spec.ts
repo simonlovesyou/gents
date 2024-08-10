@@ -1,0 +1,138 @@
+import { FileEntity } from "@gents/parser"
+import { generators } from "./generators"
+import { printNode } from "ts-morph"
+import { describe, it, expect } from "vitest"
+
+describe("generators", () => {
+  const defaultContext = {
+    next: (() => {}) as any,
+    parentEntity: {
+      type: "file" as const,
+      name: "foo",
+      path: "./foo.ts",
+      typeDeclarations: [],
+    },
+    generators: {} as unknown as typeof generators,
+    fileEntity: undefined as unknown as FileEntity,
+    hints: [],
+    addImportDeclaration: () => {},
+  }
+  describe("string", () => {
+    it("should by default create `faker.string.alpha()` call expression", () => {
+      const result = generators.string.create(
+        { type: "string" },
+        defaultContext
+      )
+
+      expect(printNode(result)).toMatchInlineSnapshot(`"faker.string.alpha()"`)
+    })
+
+    describe("hints", () => {
+      describe("objectProperty", () => {
+        it('should generate the correct hints for object property "merchantName"', () => {
+          expect(
+            generators.objectProperty.hints?.map((hint) =>
+              hint.create(
+                {
+                  type: "objectProperty" as const,
+                  name: "merchantName",
+                  property: { type: "string" },
+                  optional: true,
+                },
+                defaultContext
+              )
+            )
+          ).toMatchInlineSnapshot(`
+            [
+              "company",
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+            ]
+          `)
+        })
+        it('should generate the correct hints for object property "merchantName" & there is a parent "company" hint', () => {
+          expect(
+            generators.objectProperty.hints?.map((hint) =>
+              hint.create(
+                {
+                  type: "objectProperty" as const,
+                  name: "merchantName",
+                  property: { type: "string" },
+                  optional: true,
+                },
+                {
+                  ...defaultContext,
+                  hints: [{ name: "company", level: 1, value: "company" }],
+                }
+              )
+            )
+          ).toMatchInlineSnapshot(`
+            [
+              "company",
+              undefined,
+              "name",
+              undefined,
+              undefined,
+              undefined,
+            ]
+          `)
+        })
+      })
+      describe("name", () => {
+        const hintValues = ["firstName", "fullName", "middleName", "name"]
+        describe.each(hintValues)("hint value: %s", (hintValue) => {
+          it("should use the correct faker module & method to generate a name", () => {
+            const result = generators.string.create(
+              { type: "string" },
+              {
+                next: (() => {}) as any,
+                parentEntity: {
+                  type: "file",
+                  name: "foo",
+                  path: "./foo.ts",
+                  typeDeclarations: [],
+                },
+                generators: {} as unknown as typeof generators,
+                fileEntity: undefined as unknown as FileEntity,
+                hints: [{ name: "name", value: hintValue, level: 1 }],
+                addImportDeclaration: () => {},
+              }
+            )
+
+            expect(printNode(result)).toBe(`faker.person.${hintValue}()`)
+          })
+        })
+      })
+      describe("company & name", () => {
+        it("should use the correct company faker module & method to generate a name", () => {
+          const result = generators.string.create(
+            { type: "string" },
+            {
+              next: (() => {}) as any,
+              parentEntity: {
+                type: "file",
+                name: "foo",
+                path: "./foo.ts",
+                typeDeclarations: [],
+              },
+              generators: {} as unknown as typeof generators,
+              fileEntity: undefined as unknown as FileEntity,
+              hints: [
+                { name: "name", value: "name", level: 1 },
+                { name: "company", value: "company", level: 1 },
+              ],
+              addImportDeclaration: () => {},
+            }
+          )
+
+          expect(printNode(result)).toMatchInlineSnapshot(
+            `"faker.company.name()"`
+          )
+        })
+      })
+    })
+  })
+})
