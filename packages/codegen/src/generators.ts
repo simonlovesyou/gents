@@ -14,6 +14,8 @@ import {
   CallExpression,
   ArrayLiteralExpression,
   Statement,
+  FunctionDeclaration,
+  Block,
 } from "typescript"
 import camelcase from "camelcase"
 import { EndOfFileToken } from "typescript"
@@ -387,16 +389,21 @@ export const generators: Generators = {
   },
   file: {
     create: (entity, context) => {
-      const statements = entity.typeDeclarations.map((declaration) => {
-        return context.next(
-          {
-            ...context,
-            parentEntity: entity,
-            fileEntity: entity,
-          },
-          declaration,
-        )
-      })
+      const statements = entity.typeDeclarations
+        .map((declaration) => {
+          const result = context.next(
+            {
+              ...context,
+              parentEntity: entity,
+              fileEntity: entity,
+            },
+            declaration,
+          )
+          if (result.kind === SyntaxKind.Block) {
+            return (result as Block).statements
+          }
+        })
+        .flat(1)
 
       return factory.createSourceFile(
         statements as Statement[],
@@ -413,213 +420,357 @@ export const generators: Generators = {
         typeOnly: false,
       })
 
-      return factory.createFunctionDeclaration(
+      const optionsParameter = factory.createParameterDeclaration(
         undefined,
         undefined,
-        factory.createIdentifier(
-          camelcase(generateDeclarationName(entity.name)),
-        ),
-        [
-          factory.createTypeParameterDeclaration(
-            [factory.createToken(SyntaxKind.ConstKeyword)],
-            factory.createIdentifier("T"),
-            entity.declaration.type === "object"
-              ? factory.createTypeReferenceNode(
-                  createIdentifierImport(
-                    "PartialDeep",
-                    "type-fest",
-                    { named: true, typeOnly: true },
-                    context,
-                  ),
-                  [
-                    factory.createTypeReferenceNode(
-                      factory.createIdentifier(entity.name),
-                      undefined,
-                    ),
-                  ],
-                )
-              : factory.createTypeReferenceNode(
-                  factory.createIdentifier(entity.name),
-                  undefined,
-                ),
+        factory.createIdentifier("options"),
+        factory.createToken(SyntaxKind.QuestionToken),
+        factory.createTypeLiteralNode([
+          factory.createPropertySignature(
             undefined,
-          ),
-        ],
-        [
-          factory.createParameterDeclaration(
+            factory.createIdentifier("seed"),
             undefined,
-            undefined,
-            factory.createIdentifier(camelcase(entity.name)),
-            factory.createToken(SyntaxKind.QuestionToken),
-            factory.createTypeReferenceNode(factory.createIdentifier("T")),
-            undefined,
-          ),
-          factory.createParameterDeclaration(
-            undefined,
-            undefined,
-            factory.createIdentifier("options"),
-            factory.createToken(SyntaxKind.QuestionToken),
-            factory.createTypeLiteralNode([
-              factory.createPropertySignature(
-                undefined,
-                factory.createIdentifier("seed"),
-                undefined,
-                factory.createUnionTypeNode([
-                  factory.createKeywordTypeNode(SyntaxKind.NumberKeyword),
-                  factory.createArrayTypeNode(
-                    factory.createKeywordTypeNode(SyntaxKind.NumberKeyword),
-                  ),
-                ]),
+            factory.createUnionTypeNode([
+              factory.createKeywordTypeNode(SyntaxKind.NumberKeyword),
+              factory.createArrayTypeNode(
+                factory.createKeywordTypeNode(SyntaxKind.NumberKeyword),
               ),
             ]),
-            undefined,
           ),
-        ],
+        ]),
         undefined,
-        factory.createBlock([
-          /*
+      )
+
+      const canBeUndefined =
+        entity.declaration.type === "union" &&
+        entity.declaration.values.length > 0 &&
+        entity.declaration.values.some(
+          (entity) => entity.type === "literal" && entity.value === undefined,
+        )
+
+      const overloads = canBeUndefined
+        ? [
+            factory.createFunctionDeclaration(
+              undefined,
+              undefined,
+              factory.createIdentifier(
+                camelcase(generateDeclarationName(entity.name)),
+              ),
+              undefined,
+              [
+                factory.createParameterDeclaration(
+                  undefined,
+                  undefined,
+                  factory.createIdentifier(camelcase(entity.name)),
+                  undefined,
+                  factory.createTypeQueryNode(
+                    createIdentifierImport(
+                      "_",
+                      "@gents/gents",
+                      {
+                        named: true,
+                        typeOnly: false,
+                      },
+                      context,
+                    ),
+                    undefined,
+                  ),
+                  undefined,
+                ),
+                optionsParameter,
+              ],
+              factory.createTypeReferenceNode(
+                factory.createIdentifier(entity.name),
+                undefined,
+              ),
+              undefined,
+            ),
+            factory.createFunctionDeclaration(
+              undefined,
+              undefined,
+              factory.createIdentifier(
+                camelcase(generateDeclarationName(entity.name)),
+              ),
+              [
+                factory.createTypeParameterDeclaration(
+                  [factory.createToken(SyntaxKind.ConstKeyword)],
+                  factory.createIdentifier("T"),
+                  canBeUndefined
+                    ? factory.createUnionTypeNode([
+                        factory.createTypeReferenceNode(
+                          factory.createIdentifier(entity.name),
+                          undefined,
+                        ),
+                        factory.createTypeQueryNode(
+                          factory.createIdentifier("_"),
+                          undefined,
+                        ),
+                      ])
+                    : factory.createTypeReferenceNode(
+                        factory.createIdentifier(entity.name),
+                        undefined,
+                      ),
+                  undefined,
+                ),
+              ],
+              [
+                factory.createParameterDeclaration(
+                  undefined,
+                  undefined,
+                  factory.createIdentifier(
+                    camelcase(generateDeclarationName(entity.name)),
+                  ),
+                  factory.createToken(SyntaxKind.QuestionToken),
+                  factory.createTypeReferenceNode(
+                    factory.createIdentifier("T"),
+                    undefined,
+                  ),
+                  undefined,
+                ),
+                optionsParameter,
+              ],
+              factory.createConditionalTypeNode(
+                factory.createTypeReferenceNode(
+                  factory.createIdentifier("T"),
+                  undefined,
+                ),
+                factory.createKeywordTypeNode(SyntaxKind.UndefinedKeyword),
+                factory.createTypeReferenceNode(
+                  factory.createIdentifier("SubscriptionTier"),
+                  undefined,
+                ),
+                factory.createTypeReferenceNode(
+                  factory.createIdentifier("T"),
+                  undefined,
+                ),
+              ),
+              undefined,
+            ),
+          ]
+        : undefined
+
+      return factory.createBlock([
+        ...(overloads ?? []),
+        factory.createFunctionDeclaration(
+          undefined,
+          undefined,
+          factory.createIdentifier(
+            camelcase(generateDeclarationName(entity.name)),
+          ),
+          [
+            factory.createTypeParameterDeclaration(
+              [factory.createToken(SyntaxKind.ConstKeyword)],
+              factory.createIdentifier("T"),
+              entity.declaration.type === "object"
+                ? factory.createTypeReferenceNode(
+                    createIdentifierImport(
+                      "PartialDeep",
+                      "type-fest",
+                      { named: true, typeOnly: true },
+                      context,
+                    ),
+                    [
+                      factory.createTypeReferenceNode(
+                        factory.createIdentifier(entity.name),
+                        undefined,
+                      ),
+                    ],
+                  )
+                : factory.createTypeReferenceNode(
+                    factory.createIdentifier(entity.name),
+                    undefined,
+                  ),
+              undefined,
+            ),
+          ],
+          [
+            factory.createParameterDeclaration(
+              undefined,
+              undefined,
+              factory.createIdentifier(camelcase(entity.name)),
+              factory.createToken(SyntaxKind.QuestionToken),
+              factory.createTypeReferenceNode(factory.createIdentifier("T")),
+              undefined,
+            ),
+            optionsParameter,
+          ],
+          undefined,
+          factory.createBlock([
+            /*
             if(options?.seed !== undefined) {
               faker.seed(options.seed)
             }
           */
-          factory.createIfStatement(
-            factory.createBinaryExpression(
-              factory.createPropertyAccessChain(
-                factory.createIdentifier("options"),
-                factory.createToken(SyntaxKind.QuestionDotToken),
-                factory.createIdentifier("seed"),
+            factory.createIfStatement(
+              factory.createBinaryExpression(
+                factory.createPropertyAccessChain(
+                  factory.createIdentifier("options"),
+                  factory.createToken(SyntaxKind.QuestionDotToken),
+                  factory.createIdentifier("seed"),
+                ),
+                factory.createToken(SyntaxKind.ExclamationEqualsEqualsToken),
+                factory.createIdentifier("undefined"),
               ),
-              factory.createToken(SyntaxKind.ExclamationEqualsEqualsToken),
-              factory.createIdentifier("undefined"),
-            ),
-            factory.createBlock(
-              [
-                factory.createExpressionStatement(
-                  factory.createCallExpression(
-                    factory.createPropertyAccessExpression(
-                      createIdentifierImport(
-                        "faker",
-                        "@faker-js/faker",
-                        { named: true },
-                        context,
-                      ),
-                      factory.createIdentifier("seed"),
-                    ),
-                    undefined,
-                    [
+              factory.createBlock(
+                [
+                  factory.createExpressionStatement(
+                    factory.createCallExpression(
                       factory.createPropertyAccessExpression(
-                        factory.createIdentifier("options"),
+                        createIdentifierImport(
+                          "faker",
+                          "@faker-js/faker",
+                          { named: true },
+                          context,
+                        ),
                         factory.createIdentifier("seed"),
                       ),
-                    ],
+                      undefined,
+                      [
+                        factory.createPropertyAccessExpression(
+                          factory.createIdentifier("options"),
+                          factory.createIdentifier("seed"),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-              true,
+                ],
+                true,
+              ),
+              undefined,
             ),
-            undefined,
-          ),
-          factory.createReturnStatement(
-            factory.createAsExpression(
-              factory.createCallExpression(
-                factory.createCallExpression(
-                  createIdentifierImport(
-                    "merge",
-                    "@fastify/deepmerge",
-                    {},
-                    context,
+            canBeUndefined
+              ? factory.createReturnStatement(
+                  factory.createConditionalExpression(
+                    factory.createBinaryExpression(
+                      factory.createBinaryExpression(
+                        factory.createStringLiteral("0"),
+                        factory.createToken(SyntaxKind.InKeyword),
+                        factory.createIdentifier("arguments"),
+                      ),
+                      factory.createToken(SyntaxKind.AmpersandAmpersandToken),
+                      factory.createBinaryExpression(
+                        factory.createIdentifier(camelcase(entity.name)),
+                        factory.createToken(
+                          SyntaxKind.ExclamationEqualsEqualsToken,
+                        ),
+                        factory.createIdentifier("_"),
+                      ),
+                    ),
+                    factory.createToken(SyntaxKind.QuestionToken),
+                    factory.createIdentifier(camelcase(entity.name)),
+                    factory.createToken(SyntaxKind.ColonToken),
+                    isOneOfKindOrThrow(
+                      context.next(
+                        {
+                          ...context,
+                          parentEntity: entity,
+                          parentDeclarationEntity: entity,
+                          closestIdentifer: entity,
+                        },
+                        entity.declaration,
+                      ),
+                      [
+                        SyntaxKind.ExpressionStatement,
+                        SyntaxKind.CallExpression,
+                        SyntaxKind.ObjectLiteralExpression,
+                        SyntaxKind.StringLiteral,
+                      ],
+                    ),
                   ),
-                  undefined,
-                  [],
-                ),
-                undefined,
-                [
-                  factory.createIdentifier(camelcase(entity.name)),
-                  entity.declaration.type === "object"
-                    ? factory.createSatisfiesExpression(
-                        factory.createAsExpression(
-                          isOneOfKindOrThrow(
-                            context.next(
-                              {
-                                ...context,
-                                parentEntity: entity,
-                                parentDeclarationEntity: entity,
-                                closestIdentifer: entity,
-                              },
-                              entity.declaration,
+                )
+              : factory.createReturnStatement(
+                  factory.createAsExpression(
+                    factory.createCallExpression(
+                      createIdentifierImport("merge", "deepmerge", {}, context),
+
+                      undefined,
+                      [
+                        entity.declaration.type === "object"
+                          ? factory.createSatisfiesExpression(
+                              factory.createAsExpression(
+                                isOneOfKindOrThrow(
+                                  context.next(
+                                    {
+                                      ...context,
+                                      parentEntity: entity,
+                                      parentDeclarationEntity: entity,
+                                      closestIdentifer: entity,
+                                    },
+                                    entity.declaration,
+                                  ),
+                                  [
+                                    SyntaxKind.ExpressionStatement,
+                                    SyntaxKind.ObjectLiteralExpression,
+                                  ],
+                                ),
+                                factory.createTypeReferenceNode(
+                                  factory.createIdentifier("const"),
+                                  undefined,
+                                ),
+                              ),
+                              factory.createTypeReferenceNode(
+                                createIdentifierImport(
+                                  "ReadonlyDeep",
+                                  "type-fest",
+                                  { named: true, typeOnly: true },
+                                  context,
+                                ),
+                                [
+                                  factory.createTypeReferenceNode(
+                                    factory.createIdentifier(entity.name),
+                                    undefined,
+                                  ),
+                                ],
+                              ),
+                            )
+                          : isOneOfKindOrThrow(
+                              context.next(
+                                {
+                                  ...context,
+                                  parentEntity: entity,
+                                  parentDeclarationEntity: entity,
+                                  closestIdentifer: entity,
+                                },
+                                entity.declaration,
+                              ),
+                              [
+                                SyntaxKind.ExpressionStatement,
+                                SyntaxKind.CallExpression,
+                                SyntaxKind.ObjectLiteralExpression,
+                                SyntaxKind.StringLiteral,
+                              ],
                             ),
-                            [
-                              SyntaxKind.ExpressionStatement,
-                              SyntaxKind.ObjectLiteralExpression,
-                              SyntaxKind.StringLiteral,
-                            ],
-                          ),
+                        factory.createIdentifier(camelcase(entity.name)),
+                      ],
+                    ),
+                    factory.createTypeReferenceNode(
+                      createIdentifierImport(
+                        "SimplifyDeep",
+                        "type-fest",
+                        {
+                          typeOnly: true,
+                          named: true,
+                        },
+                        context,
+                      ),
+                      [
+                        factory.createIntersectionTypeNode([
                           factory.createTypeReferenceNode(
-                            factory.createIdentifier("const"),
+                            factory.createIdentifier(entity.name),
                             undefined,
                           ),
-                        ),
-                        factory.createTypeReferenceNode(
-                          createIdentifierImport(
-                            "ReadonlyDeep",
-                            "type-fest",
-                            { named: true, typeOnly: true },
-                            context,
+                          factory.createTypeReferenceNode(
+                            factory.createIdentifier("T"),
+                            undefined,
                           ),
-                          [
-                            factory.createTypeReferenceNode(
-                              factory.createIdentifier(entity.name),
-                              undefined,
-                            ),
-                          ],
-                        ),
-                      )
-                    : isOneOfKindOrThrow(
-                        context.next(
-                          {
-                            ...context,
-                            parentEntity: entity,
-                            parentDeclarationEntity: entity,
-                            closestIdentifer: entity,
-                          },
-                          entity.declaration,
-                        ),
-                        [
-                          SyntaxKind.ExpressionStatement,
-                          SyntaxKind.CallExpression,
-                          SyntaxKind.ObjectLiteralExpression,
-                          SyntaxKind.StringLiteral,
-                        ],
-                      ),
-                ],
-              ),
-              factory.createTypeReferenceNode(
-                createIdentifierImport(
-                  "SimplifyDeep",
-                  "type-fest",
-                  {
-                    typeOnly: true,
-                    named: true,
-                  },
-                  context,
+                        ]),
+                      ],
+                    ),
+                  ),
                 ),
-                [
-                  factory.createIntersectionTypeNode([
-                    factory.createTypeReferenceNode(
-                      factory.createIdentifier(entity.name),
-                      undefined,
-                    ),
-                    factory.createTypeReferenceNode(
-                      factory.createIdentifier("T"),
-                      undefined,
-                    ),
-                  ]),
-                ],
-              ),
-            ),
-          ),
-        ]),
-      )
+          ]),
+        ),
+      ])
     },
     hints: identifierHints,
   },

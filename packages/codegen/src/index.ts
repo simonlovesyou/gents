@@ -81,7 +81,10 @@ export type Context<TEntity extends Entity> = {
     path: string
     typeDeclarations: DeclarationEntity[]
   }
-  next: (context: Context<TEntity>, entity: Entity) => ts.Node
+  next: (
+    context: Context<TEntity>,
+    entity: Entity,
+  ) => ReturnType<CreateEntity<TEntity>>
   hints: Array<{ name: string; level: number; value: string }>
   generators: Generators
   addImportDeclaration: (importSpecifier: ImportSpecifier) => void
