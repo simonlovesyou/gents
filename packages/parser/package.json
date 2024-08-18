@@ -8,7 +8,7 @@
     "dist/index.d.ts"
   ],
   "types": "./dist/index.d.ts",
-  "packageManager": "pnpm@8.15.3",
+  "packageManager": "bun@1.0.33",
   "description": "",
   "main": "./dist/index.js",
   "scripts": {
