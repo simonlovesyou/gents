@@ -586,4 +586,53 @@ describe("codegen", () => {
       ]
     `)
   })
+  describe("unions", () => {
+    it("should correctly parse unions with an undefined element", () => {
+      const project = new Project({
+        useInMemoryFileSystem: true,
+        compilerOptions: {
+          strictNullChecks: true,
+        },
+      })
+
+      project.createSourceFile(
+        "test.ts",
+        dedent`
+          type Bar = "foo" | undefined
+        `,
+      )
+
+      const result = parse(project)
+
+      expect(result).toMatchInlineSnapshot(`
+        [
+          {
+            "name": "test.ts",
+            "path": "/test.ts",
+            "type": "file",
+            "typeDeclarations": [
+              {
+                "declaration": {
+                  "type": "union",
+                  "values": [
+                    {
+                      "type": "literal",
+                      "value": undefined,
+                    },
+                    {
+                      "type": "literal",
+                      "value": "foo",
+                    },
+                  ],
+                },
+                "exported": false,
+                "name": "Bar",
+                "type": "declaration",
+              },
+            ],
+          },
+        ]
+      `)
+    })
+  })
 })
