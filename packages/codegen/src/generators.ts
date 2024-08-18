@@ -223,6 +223,7 @@ export const generators: Generators = {
             SyntaxKind.CallExpression,
             SyntaxKind.ArrayLiteralExpression,
             SyntaxKind.ObjectLiteralExpression,
+            SyntaxKind.StringLiteral,
           ],
         ),
       ),
@@ -550,6 +551,7 @@ export const generators: Generators = {
                             [
                               SyntaxKind.ExpressionStatement,
                               SyntaxKind.ObjectLiteralExpression,
+                              SyntaxKind.StringLiteral,
                             ],
                           ),
                           factory.createTypeReferenceNode(
@@ -586,6 +588,7 @@ export const generators: Generators = {
                           SyntaxKind.ExpressionStatement,
                           SyntaxKind.CallExpression,
                           SyntaxKind.ObjectLiteralExpression,
+                          SyntaxKind.StringLiteral,
                         ],
                       ),
                 ],
@@ -663,6 +666,7 @@ export const generators: Generators = {
         entity.properties.map((property) => {
           return isOneOfKindOrThrow(context.next(context, property), [
             SyntaxKind.PropertyAssignment,
+            SyntaxKind.StringLiteral,
           ])
         }),
         true,
