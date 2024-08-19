@@ -38,6 +38,16 @@ const createPropertyAccessChain = (
   }, factory.createIdentifier(properties[0]!.name))
 }
 
+const createNullishCoalescingExpression = (
+  left: Expression,
+  right: Expression,
+) =>
+  factory.createBinaryExpression(
+    left,
+    factory.createToken(SyntaxKind.QuestionQuestionToken),
+    right,
+  )
+
 const createIdentifierImport = (
   identifier: string,
   specifier: string,
@@ -682,7 +692,6 @@ export const generators: Generators = {
                   factory.createAsExpression(
                     factory.createCallExpression(
                       createIdentifierImport("merge", "deepmerge", {}, context),
-
                       undefined,
                       [
                         entity.declaration.type === "object"
@@ -740,7 +749,10 @@ export const generators: Generators = {
                                 SyntaxKind.StringLiteral,
                               ],
                             ),
-                        factory.createIdentifier(camelcase(entity.name)),
+                        createNullishCoalescingExpression(
+                          factory.createIdentifier(camelcase(entity.name)),
+                          factory.createObjectLiteralExpression(),
+                        ),
                       ],
                     ),
                     factory.createTypeReferenceNode(
