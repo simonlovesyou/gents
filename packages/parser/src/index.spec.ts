@@ -188,6 +188,46 @@ describe("codegen", () => {
 }
 `)
     })
+    describe("with compiler option `exactOptionalPropertyTypes`", () => {
+      it("should parse optional properties correctly", () => {
+        const project = new Project({
+          useInMemoryFileSystem: true,
+          compilerOptions: { noUncheckedIndexedAccess: true },
+        })
+
+        project.createSourceFile(
+          "test.ts",
+          dedent`
+        interface MyInterface {
+          foo?: number
+        }
+      `,
+        )
+
+        const [testFile] = parse(project)
+
+        expect(testFile?.typeDeclarations[0]).toMatchInlineSnapshot(`
+          {
+            "declaration": {
+              "properties": [
+                {
+                  "name": "foo",
+                  "optional": true,
+                  "property": {
+                    "type": "number",
+                  },
+                  "type": "objectProperty",
+                },
+              ],
+              "type": "object",
+            },
+            "exported": false,
+            "name": "MyInterface",
+            "type": "declaration",
+          }
+        `)
+      })
+    })
   })
 
   describe("references", () => {
