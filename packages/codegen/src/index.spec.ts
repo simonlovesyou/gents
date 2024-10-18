@@ -17,7 +17,7 @@ describe("codegen", () => {
         },
       ],
       generators,
-      { outputFolder: "foo" }
+      { outputFolder: "foo" },
     )
     console.log(project.getSourceFiles().map((f) => f.getFilePath()))
     expect(project.getSourceFileOrThrow("./foo/gen-foo.ts")).not.toBe(undefined)
@@ -57,7 +57,7 @@ describe("codegen", () => {
       undefined,
       [],
       undefined,
-      factory.createBlock([], false)
+      factory.createBlock([], false),
     )
 
     describe("single `context.addImportDeclaration` call", () => {
@@ -78,20 +78,20 @@ describe("codegen", () => {
           const project = codegen(
             rootEntities,
             generators as Generators,
-            defaultOptions
+            defaultOptions,
           )
 
           expect(
             project
               .getSourceFileOrThrow("./foo/gen-foo.ts")
-              .getImportDeclarations()
+              .getImportDeclarations(),
           ).toHaveLength(1)
         })
         it("should be the correct import statement", () => {
           const project = codegen(
             rootEntities,
             generators as Generators,
-            defaultOptions
+            defaultOptions,
           )
 
           expect(
@@ -100,9 +100,9 @@ describe("codegen", () => {
               .getImportDeclaration(
                 (importDeclaration) =>
                   importDeclaration.getModuleSpecifierValue() ===
-                  importSpecifier
+                  importSpecifier,
               )
-              ?.getText()
+              ?.getText(),
           ).toMatchInlineSnapshot(`"import { foo } from "foo-bar";"`)
         })
       })
@@ -123,20 +123,20 @@ describe("codegen", () => {
           const project = codegen(
             rootEntities,
             generators as Generators,
-            defaultOptions
+            defaultOptions,
           )
 
           expect(
             project
               .getSourceFileOrThrow("./foo/gen-foo.ts")
-              .getImportDeclarations()
+              .getImportDeclarations(),
           ).toHaveLength(1)
         })
         it("should be the correct import statement", () => {
           const project = codegen(
             rootEntities,
             generators as Generators,
-            defaultOptions
+            defaultOptions,
           )
 
           expect(
@@ -145,9 +145,9 @@ describe("codegen", () => {
               .getImportDeclaration(
                 (importDeclaration) =>
                   importDeclaration.getModuleSpecifierValue() ===
-                  importSpecifier
+                  importSpecifier,
               )
-              ?.getText()
+              ?.getText(),
           ).toMatchInlineSnapshot(`"import type { foo } from "foo-bar";"`)
         })
       })
@@ -172,20 +172,20 @@ describe("codegen", () => {
           const project = codegen(
             rootEntities,
             generators as Generators,
-            defaultOptions
+            defaultOptions,
           )
 
           expect(
             project
               .getSourceFileOrThrow("./foo/gen-foo.ts")
-              .getImportDeclarations()
+              .getImportDeclarations(),
           ).toHaveLength(1)
         })
         it("should be the correct import statement", () => {
           const project = codegen(
             rootEntities,
             generators as Generators,
-            defaultOptions
+            defaultOptions,
           )
 
           expect(
@@ -194,9 +194,9 @@ describe("codegen", () => {
               .getImportDeclaration(
                 (importDeclaration) =>
                   importDeclaration.getModuleSpecifierValue() ===
-                  importSpecifier
+                  importSpecifier,
               )
-              ?.getText()
+              ?.getText(),
           ).toMatchInlineSnapshot(`"import { foo, bar, quz } from "foo-bar";"`)
         })
       })
@@ -226,20 +226,20 @@ describe("codegen", () => {
             const project = codegen(
               rootEntities,
               generators as Generators,
-              options
+              options,
             )
 
             expect(
               project
                 .getSourceFileOrThrow("./foo/gen-foo.ts")
-                .getImportDeclarations()
+                .getImportDeclarations(),
             ).toHaveLength(1)
           })
           it("should be the correct import statement", () => {
             const project = codegen(
               rootEntities,
               generators as Generators,
-              options
+              options,
             )
 
             expect(
@@ -248,11 +248,11 @@ describe("codegen", () => {
                 .getImportDeclaration(
                   (importDeclaration) =>
                     importDeclaration.getModuleSpecifierValue() ===
-                    importSpecifier
+                    importSpecifier,
                 )
-                ?.getText()
+                ?.getText(),
             ).toMatchInlineSnapshot(
-              `"import type { foo, bar, quz } from "foo-bar";"`
+              `"import type { foo, bar, quz } from "foo-bar";"`,
             )
           })
         })
@@ -281,20 +281,20 @@ describe("codegen", () => {
             const project = codegen(
               rootEntities,
               generators as Generators,
-              options
+              options,
             )
 
             expect(
               project
                 .getSourceFileOrThrow("./foo/gen-foo.ts")
-                .getImportDeclarations()
+                .getImportDeclarations(),
             ).toHaveLength(1)
           })
           it("should be the correct import statement", () => {
             const project = codegen(
               rootEntities,
               generators as Generators,
-              options
+              options,
             )
 
             expect(
@@ -303,11 +303,11 @@ describe("codegen", () => {
                 .getImportDeclaration(
                   (importDeclaration) =>
                     importDeclaration.getModuleSpecifierValue() ===
-                    importSpecifier
+                    importSpecifier,
                 )
-                ?.getText()
+                ?.getText(),
             ).toMatchInlineSnapshot(
-              `"import { type foo, type bar, type quz } from "foo-bar";"`
+              `"import { type foo, type bar, type quz } from "foo-bar";"`,
             )
           })
         })
@@ -341,20 +341,20 @@ describe("codegen", () => {
           const project = codegen(
             rootEntities,
             generators as Generators,
-            defaultOptions
+            defaultOptions,
           )
 
           expect(
             project
               .getSourceFileOrThrow("./foo/gen-foo.ts")
-              .getImportDeclarations()
+              .getImportDeclarations(),
           ).toHaveLength(1)
         })
         it("should add the correct import statement", () => {
           const project = codegen(
             rootEntities,
             generators as Generators,
-            defaultOptions
+            defaultOptions,
           )
 
           expect(
@@ -363,9 +363,9 @@ describe("codegen", () => {
               .getImportDeclaration(
                 (importDeclaration) =>
                   importDeclaration.getModuleSpecifierValue() ===
-                  importSpecifier
+                  importSpecifier,
               )
-              ?.getText()
+              ?.getText(),
           ).toMatchInlineSnapshot(`"import { foo, bar, quz } from "foo-bar";"`)
         })
       })
@@ -402,20 +402,20 @@ describe("codegen", () => {
             const project = codegen(
               rootEntities,
               generators as Generators,
-              options
+              options,
             )
 
             expect(
               project
                 .getSourceFileOrThrow("./foo/gen-foo.ts")
-                .getImportDeclarations()
+                .getImportDeclarations(),
             ).toHaveLength(1)
           })
           it("should add the correct import statement", () => {
             const project = codegen(
               rootEntities,
               generators as Generators,
-              options
+              options,
             )
 
             expect(
@@ -424,11 +424,11 @@ describe("codegen", () => {
                 .getImportDeclaration(
                   (importDeclaration) =>
                     importDeclaration.getModuleSpecifierValue() ===
-                    importSpecifier
+                    importSpecifier,
                 )
-                ?.getText()
+                ?.getText(),
             ).toMatchInlineSnapshot(
-              `"import type { foo, bar, quz } from "foo-bar";"`
+              `"import type { foo, bar, quz } from "foo-bar";"`,
             )
           })
         })
@@ -464,20 +464,20 @@ describe("codegen", () => {
             const project = codegen(
               rootEntities,
               generators as Generators,
-              options
+              options,
             )
 
             expect(
               project
                 .getSourceFileOrThrow("./foo/gen-foo.ts")
-                .getImportDeclarations()
+                .getImportDeclarations(),
             ).toHaveLength(1)
           })
           it("should add the correct import statement", () => {
             const project = codegen(
               rootEntities,
               generators as Generators,
-              options
+              options,
             )
 
             expect(
@@ -486,11 +486,11 @@ describe("codegen", () => {
                 .getImportDeclaration(
                   (importDeclaration) =>
                     importDeclaration.getModuleSpecifierValue() ===
-                    importSpecifier
+                    importSpecifier,
                 )
-                ?.getText()
+                ?.getText(),
             ).toMatchInlineSnapshot(
-              `"import { type foo, type bar, type quz } from "foo-bar";"`
+              `"import { type foo, type bar, type quz } from "foo-bar";"`,
             )
           })
         })

@@ -189,6 +189,7 @@ export const codegen = (
     options.fileNameGenerator ?? ((name: string) => "gen-" + name)
 
   const project = options?.project ?? new Project()
+
   entities.forEach((entity) => {
     let imports: ImportSpecifier[] = []
     const sourceFile = project.createSourceFile(
