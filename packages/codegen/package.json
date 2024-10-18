@@ -14,7 +14,7 @@
   "packageManager": "bun@1.0.33",
   "scripts": {
     "test": "vitest src/*.spec.ts",
-    "build": "tsup ./src/index.ts ./src/generators.ts ./src/config.ts --format cjs,esm --dts src/index.ts"
+    "build": "tsup ./src/index.ts ./src/generators.ts ./src/config.ts --format cjs,esm --dts src/index.ts --sourcemap"
   },
   "author": {
     "email": "simonljohansson92@gmail.com",
