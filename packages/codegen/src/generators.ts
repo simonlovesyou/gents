@@ -14,28 +14,46 @@ import {
   CallExpression,
   ArrayLiteralExpression,
   Statement,
-  FunctionDeclaration,
   Block,
 } from "typescript"
 import camelcase from "camelcase"
-import { EndOfFileToken } from "typescript"
+
+type PropertyAccessElementLike =
+  | {
+      name: string
+      optional?: boolean
+    }
+  | Identifier
+  | string
 
 const createPropertyAccessChain = (
-  properties: {
-    name: string
-    optional?: boolean
-  }[],
+  properties: [PropertyAccessElementLike, ...PropertyAccessElementLike[]],
 ) => {
-  return properties.slice(1).reduce<Expression>((acc, property) => {
-    if (!property.optional) {
-      return factory.createPropertyAccessExpression(acc, property.name)
+  const [head, ...tail] = properties
+
+  const accumulator =
+    typeof head === "string"
+      ? factory.createIdentifier(head)
+      : "name" in head
+        ? factory.createIdentifier(head.name)
+        : head
+
+  return tail.reduce<Expression>((acc, property) => {
+    if (typeof property === "string") {
+      return factory.createPropertyAccessExpression(acc, property)
     }
-    return factory.createPropertyAccessChain(
-      acc,
-      factory.createToken(SyntaxKind.QuestionDotToken),
-      property.name,
-    )
-  }, factory.createIdentifier(properties[0]!.name))
+    if ("name" in property) {
+      if (!property.optional) {
+        return factory.createPropertyAccessExpression(acc, property.name)
+      }
+      return factory.createPropertyAccessChain(
+        acc,
+        factory.createToken(SyntaxKind.QuestionDotToken),
+        property.name,
+      )
+    }
+    return factory.createPropertyAccessExpression(acc, property)
+  }, accumulator)
 }
 
 const createNullishCoalescingExpression = (
@@ -71,18 +89,16 @@ const createIdentifierImport = (
 const boolean = {
   create: (_, context) =>
     factory.createCallExpression(
-      factory.createPropertyAccessExpression(
-        factory.createPropertyAccessExpression(
-          createIdentifierImport(
-            "faker",
-            "@faker-js/faker",
-            { named: true },
-            context,
-          ),
-          factory.createIdentifier("datatype"),
+      createPropertyAccessChain([
+        createIdentifierImport(
+          "faker",
+          "@faker-js/faker",
+          { named: true },
+          context,
         ),
-        factory.createIdentifier("boolean"),
-      ),
+        "datatype",
+        "boolean",
+      ]),
       undefined,
       [],
     ),
@@ -249,13 +265,11 @@ export const generators: Generators = {
     create: (entity, context) => {
       if (!Array.isArray(entity.elements)) {
         return factory.createCallExpression(
-          factory.createPropertyAccessExpression(
-            factory.createPropertyAccessExpression(
-              factory.createIdentifier("faker"),
-              factory.createIdentifier("helpers"),
-            ),
-            factory.createIdentifier("multiple"),
-          ),
+          createPropertyAccessChain([
+            { name: "faker" },
+            { name: "helpers" },
+            { name: "multiple" },
+          ]),
           undefined,
           [
             factory.createArrowFunction(
@@ -274,17 +288,15 @@ export const generators: Generators = {
                 factory.createPropertyAssignment(
                   factory.createIdentifier("count"),
                   factory.createBinaryExpression(
-                    createPropertyAccessChain(
-                      [
-                        {
-                          name: camelcase(
-                            context.parentDeclarationEntity!.name,
-                          ),
-                          optional: true,
-                        },
+                    createPropertyAccessChain([
+                      {
+                        name: camelcase(context.parentDeclarationEntity!.name),
+                        optional: true,
+                      },
+                      ...[
                         context.closestIdentifer
                           ? {
-                              name: camelcase(context.closestIdentifer.name),
+                              name: context.closestIdentifer.name,
                               optional: true,
                             }
                           : undefined,
@@ -293,20 +305,18 @@ export const generators: Generators = {
                         (property): property is NonNullable<typeof property> =>
                           property !== undefined,
                       ),
-                    ),
+                    ] as const),
                     factory.createToken(SyntaxKind.QuestionQuestionToken),
                     factory.createObjectLiteralExpression(
                       [
                         factory.createPropertyAssignment(
                           factory.createIdentifier("max"),
                           factory.createCallExpression(
-                            factory.createPropertyAccessExpression(
-                              factory.createPropertyAccessExpression(
-                                factory.createIdentifier("faker"),
-                                factory.createIdentifier("number"),
-                              ),
-                              factory.createIdentifier("int"),
-                            ),
+                            createPropertyAccessChain([
+                              "faker",
+                              "number",
+                              "int",
+                            ]),
                             undefined,
                             [factory.createNumericLiteral("42")],
                           ),
@@ -559,6 +569,14 @@ export const generators: Generators = {
           ]
         : undefined
 
+      const exactOptionalPropertyTypes =
+        context.project.getCompilerOptions().exactOptionalPropertyTypes
+
+      const hasOptionalProperties =
+        entity.declaration.type === "object" &&
+        entity.declaration.properties.length > 0 &&
+        entity.declaration.properties.some((property) => property.optional)
+
       return factory.createBlock([
         ...(overloads ?? []),
         factory.createFunctionDeclaration(
@@ -625,22 +643,17 @@ export const generators: Generators = {
                 [
                   factory.createExpressionStatement(
                     factory.createCallExpression(
-                      factory.createPropertyAccessExpression(
+                      createPropertyAccessChain([
                         createIdentifierImport(
                           "faker",
                           "@faker-js/faker",
                           { named: true },
                           context,
                         ),
-                        factory.createIdentifier("seed"),
-                      ),
+                        "seed",
+                      ]),
                       undefined,
-                      [
-                        factory.createPropertyAccessExpression(
-                          factory.createIdentifier("options"),
-                          factory.createIdentifier("seed"),
-                        ),
-                      ],
+                      [createPropertyAccessChain(["options", "seed"])],
                     ),
                   ),
                 ],
@@ -688,98 +701,208 @@ export const generators: Generators = {
                     ),
                   ),
                 )
-              : factory.createReturnStatement(
-                  factory.createAsExpression(
-                    factory.createCallExpression(
-                      createIdentifierImport("merge", "deepmerge", {}, context),
-                      undefined,
-                      [
-                        entity.declaration.type === "object"
-                          ? factory.createSatisfiesExpression(
-                              factory.createAsExpression(
-                                isOneOfKindOrThrow(
-                                  context.next(
-                                    {
-                                      ...context,
-                                      parentEntity: entity,
-                                      parentDeclarationEntity: entity,
-                                      closestIdentifer: entity,
-                                    },
-                                    entity.declaration,
-                                  ),
-                                  [
-                                    SyntaxKind.ExpressionStatement,
-                                    SyntaxKind.ObjectLiteralExpression,
-                                  ],
-                                ),
-                                factory.createTypeReferenceNode(
-                                  factory.createIdentifier("const"),
-                                  undefined,
-                                ),
-                              ),
-                              factory.createTypeReferenceNode(
-                                createIdentifierImport(
-                                  "ReadonlyDeep",
-                                  "type-fest",
-                                  { named: true, typeOnly: true },
-                                  context,
-                                ),
-                                [
+              : entity.declaration.type === "union"
+                ? factory.createReturnStatement(
+                    factory.createAsExpression(
+                      factory.createParenthesizedExpression(
+                        factory.createBinaryExpression(
+                          factory.createIdentifier(camelcase(entity.name)),
+                          factory.createToken(SyntaxKind.QuestionQuestionToken),
+                          isOneOfKindOrThrow(
+                            context.next(
+                              {
+                                ...context,
+                                parentEntity: entity,
+                                parentDeclarationEntity: entity,
+                                closestIdentifer: context.closestIdentifer,
+                              },
+                              entity.declaration,
+                            ),
+                            [
+                              SyntaxKind.ExpressionStatement,
+                              SyntaxKind.CallExpression,
+                            ],
+                          ),
+                        ),
+                      ),
+                      factory.createIntersectionTypeNode([
+                        factory.createTypeReferenceNode(
+                          factory.createIdentifier(entity.name),
+                          undefined,
+                        ),
+                        factory.createTypeReferenceNode(
+                          factory.createIdentifier("T"),
+                          undefined,
+                        ),
+                      ]),
+                    ),
+                  )
+                : factory.createReturnStatement(
+                    factory.createAsExpression(
+                      factory.createCallExpression(
+                        createIdentifierImport(
+                          "merge",
+                          "deepmerge",
+                          {},
+                          context,
+                        ),
+                        undefined,
+                        [
+                          entity.declaration.type === "object"
+                            ? factory.createSatisfiesExpression(
+                                factory.createAsExpression(
+                                  exactOptionalPropertyTypes &&
+                                    hasOptionalProperties
+                                    ? factory.createCallExpression(
+                                        createIdentifierImport(
+                                          "omit",
+                                          "lodash.omit",
+                                          {},
+                                          context,
+                                        ),
+                                        [],
+                                        [
+                                          factory.createCallExpression(
+                                            createPropertyAccessChain([
+                                              "faker",
+                                              "helpers",
+                                              "arrayElements",
+                                            ]),
+                                            [],
+                                            [
+                                              factory.createArrayLiteralExpression(
+                                                entity.declaration.properties
+                                                  .filter(
+                                                    (property) =>
+                                                      property.optional,
+                                                  )
+                                                  .map((property) =>
+                                                    factory.createStringLiteral(
+                                                      property.name,
+                                                    ),
+                                                  ),
+                                              ),
+                                              factory.createObjectLiteralExpression(
+                                                [
+                                                  factory.createPropertyAssignment(
+                                                    "min",
+                                                    factory.createNumericLiteral(
+                                                      0,
+                                                    ),
+                                                  ),
+                                                  factory.createPropertyAssignment(
+                                                    "max",
+                                                    factory.createNumericLiteral(
+                                                      entity.declaration.properties.filter(
+                                                        (property) =>
+                                                          property.optional,
+                                                      ).length,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                          isOneOfKindOrThrow(
+                                            context.next(
+                                              {
+                                                ...context,
+                                                parentEntity: entity,
+                                                parentDeclarationEntity: entity,
+                                                closestIdentifer: entity,
+                                              },
+                                              entity.declaration,
+                                            ),
+                                            [
+                                              SyntaxKind.ExpressionStatement,
+                                              SyntaxKind.ObjectLiteralExpression,
+                                            ],
+                                          ),
+                                        ],
+                                      )
+                                    : isOneOfKindOrThrow(
+                                        context.next(
+                                          {
+                                            ...context,
+                                            parentEntity: entity,
+                                            parentDeclarationEntity: entity,
+                                            closestIdentifer: entity,
+                                          },
+                                          entity.declaration,
+                                        ),
+                                        [
+                                          SyntaxKind.ExpressionStatement,
+                                          SyntaxKind.ObjectLiteralExpression,
+                                        ],
+                                      ),
                                   factory.createTypeReferenceNode(
-                                    factory.createIdentifier(entity.name),
+                                    factory.createIdentifier("const"),
                                     undefined,
                                   ),
+                                ),
+                                factory.createTypeReferenceNode(
+                                  createIdentifierImport(
+                                    "ReadonlyDeep",
+                                    "type-fest",
+                                    { named: true, typeOnly: true },
+                                    context,
+                                  ),
+                                  [
+                                    factory.createTypeReferenceNode(
+                                      factory.createIdentifier(entity.name),
+                                      undefined,
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : isOneOfKindOrThrow(
+                                context.next(
+                                  {
+                                    ...context,
+                                    parentEntity: entity,
+                                    parentDeclarationEntity: entity,
+                                    closestIdentifer: entity,
+                                  },
+                                  entity.declaration,
+                                ),
+                                [
+                                  SyntaxKind.ExpressionStatement,
+                                  SyntaxKind.CallExpression,
+                                  SyntaxKind.ObjectLiteralExpression,
+                                  SyntaxKind.StringLiteral,
                                 ],
                               ),
-                            )
-                          : isOneOfKindOrThrow(
-                              context.next(
-                                {
-                                  ...context,
-                                  parentEntity: entity,
-                                  parentDeclarationEntity: entity,
-                                  closestIdentifer: entity,
-                                },
-                                entity.declaration,
-                              ),
-                              [
-                                SyntaxKind.ExpressionStatement,
-                                SyntaxKind.CallExpression,
-                                SyntaxKind.ObjectLiteralExpression,
-                                SyntaxKind.StringLiteral,
-                              ],
-                            ),
-                        createNullishCoalescingExpression(
-                          factory.createIdentifier(camelcase(entity.name)),
-                          factory.createObjectLiteralExpression(),
-                        ),
-                      ],
-                    ),
-                    factory.createTypeReferenceNode(
-                      createIdentifierImport(
-                        "SimplifyDeep",
-                        "type-fest",
-                        {
-                          typeOnly: true,
-                          named: true,
-                        },
-                        context,
+                          createNullishCoalescingExpression(
+                            factory.createIdentifier(camelcase(entity.name)),
+                            factory.createObjectLiteralExpression(),
+                          ),
+                        ],
                       ),
-                      [
-                        factory.createIntersectionTypeNode([
-                          factory.createTypeReferenceNode(
-                            factory.createIdentifier(entity.name),
-                            undefined,
-                          ),
-                          factory.createTypeReferenceNode(
-                            factory.createIdentifier("T"),
-                            undefined,
-                          ),
-                        ]),
-                      ],
+                      factory.createTypeReferenceNode(
+                        createIdentifierImport(
+                          "SimplifyDeep",
+                          "type-fest",
+                          {
+                            typeOnly: true,
+                            named: true,
+                          },
+                          context,
+                        ),
+                        [
+                          factory.createIntersectionTypeNode([
+                            factory.createTypeReferenceNode(
+                              factory.createIdentifier(entity.name),
+                              undefined,
+                            ),
+                            factory.createTypeReferenceNode(
+                              factory.createIdentifier("T"),
+                              undefined,
+                            ),
+                          ]),
+                        ],
+                      ),
                     ),
                   ),
-                ),
           ]),
         ),
       ])
@@ -789,18 +912,16 @@ export const generators: Generators = {
   number: {
     create: (_, context) => {
       return factory.createCallExpression(
-        factory.createPropertyAccessExpression(
-          factory.createPropertyAccessExpression(
-            createIdentifierImport(
-              "faker",
-              "@faker-js/faker",
-              { named: true },
-              context,
-            ),
-            factory.createIdentifier("number"),
+        createPropertyAccessChain([
+          createIdentifierImport(
+            "faker",
+            "@faker-js/faker",
+            { named: true },
+            context,
           ),
-          factory.createIdentifier("int"),
-        ),
+          "number",
+          "int",
+        ]),
         undefined,
         [],
       )
@@ -842,23 +963,23 @@ export const generators: Generators = {
         (hint) => hint.name === "name" && hint.level <= 1,
       )
 
+      const fakerImport = createIdentifierImport(
+        "faker",
+        "@faker-js/faker",
+        { named: true },
+        context,
+      )
+
       if (nameHint) {
         const company = context.hints.find(
           (hint) => hint.name === "company" && hint.level >= nameHint.level,
         )
         return factory.createCallExpression(
-          factory.createPropertyAccessExpression(
-            factory.createPropertyAccessExpression(
-              createIdentifierImport(
-                "faker",
-                "@faker-js/faker",
-                { named: true },
-                context,
-              ),
-              factory.createIdentifier(company ? "company" : "person"),
-            ),
-            factory.createIdentifier(nameHint.value),
-          ),
+          createPropertyAccessChain([
+            fakerImport,
+            company ? "company" : "person",
+            nameHint.value,
+          ]),
           undefined,
           [],
         )
@@ -868,18 +989,7 @@ export const generators: Generators = {
       )
       if (currencyCodeHint) {
         return factory.createCallExpression(
-          factory.createPropertyAccessExpression(
-            factory.createPropertyAccessExpression(
-              createIdentifierImport(
-                "faker",
-                "@faker-js/faker",
-                { named: true },
-                context,
-              ),
-              factory.createIdentifier("finance"),
-            ),
-            factory.createIdentifier("currencyCode"),
-          ),
+          createPropertyAccessChain([fakerImport, "finance", "currencyCode"]),
           undefined,
           [],
         )
@@ -889,18 +999,7 @@ export const generators: Generators = {
       )
       if (idHint) {
         return factory.createCallExpression(
-          factory.createPropertyAccessExpression(
-            factory.createPropertyAccessExpression(
-              createIdentifierImport(
-                "faker",
-                "@faker-js/faker",
-                { named: true },
-                context,
-              ),
-              factory.createIdentifier("string"),
-            ),
-            factory.createIdentifier("uuid"),
-          ),
+          createPropertyAccessChain([fakerImport, "string", "uuid"]),
           undefined,
           [],
         )
@@ -915,36 +1014,14 @@ export const generators: Generators = {
         )
         if (avatarHint) {
           return factory.createCallExpression(
-            factory.createPropertyAccessExpression(
-              factory.createPropertyAccessExpression(
-                createIdentifierImport(
-                  "faker",
-                  "@faker-js/faker",
-                  { named: true },
-                  context,
-                ),
-                factory.createIdentifier("image"),
-              ),
-              factory.createIdentifier("avatar"),
-            ),
+            createPropertyAccessChain([fakerImport, "image", "avatar"]),
             undefined,
             [],
           )
         }
 
         return factory.createCallExpression(
-          factory.createPropertyAccessExpression(
-            factory.createPropertyAccessExpression(
-              createIdentifierImport(
-                "faker",
-                "@faker-js/faker",
-                { named: true },
-                context,
-              ),
-              factory.createIdentifier("internet"),
-            ),
-            factory.createIdentifier("url"),
-          ),
+          createPropertyAccessChain([fakerImport, "internet", "url"]),
           undefined,
           [],
         )
@@ -955,35 +1032,13 @@ export const generators: Generators = {
 
       if (avatarHint) {
         return factory.createCallExpression(
-          factory.createPropertyAccessExpression(
-            factory.createPropertyAccessExpression(
-              createIdentifierImport(
-                "faker",
-                "@faker-js/faker",
-                { named: true },
-                context,
-              ),
-              factory.createIdentifier("image"),
-            ),
-            factory.createIdentifier("avatar"),
-          ),
+          createPropertyAccessChain([fakerImport, "image", "avatar"]),
           undefined,
           [],
         )
       }
       return factory.createCallExpression(
-        factory.createPropertyAccessExpression(
-          factory.createPropertyAccessExpression(
-            createIdentifierImport(
-              "faker",
-              "@faker-js/faker",
-              { named: true },
-              context,
-            ),
-            factory.createIdentifier("string"),
-          ),
-          factory.createIdentifier("alpha"),
-        ),
+        createPropertyAccessChain([fakerImport, "string", "alpha"]),
         undefined,
         [],
       )
@@ -992,18 +1047,16 @@ export const generators: Generators = {
   union: {
     create: (entity, context) => {
       return factory.createCallExpression(
-        factory.createPropertyAccessExpression(
-          factory.createPropertyAccessExpression(
-            createIdentifierImport(
-              "faker",
-              "@faker-js/faker",
-              { named: true },
-              context,
-            ),
-            factory.createIdentifier("helpers"),
+        createPropertyAccessChain([
+          createIdentifierImport(
+            "faker",
+            "@faker-js/faker",
+            { named: true },
+            context,
           ),
-          factory.createIdentifier("arrayElement"),
-        ),
+          { name: "helpers" },
+          { name: "arrayElement" },
+        ]),
         undefined,
         [
           factory.createAsExpression(
@@ -1017,6 +1070,7 @@ export const generators: Generators = {
                       SyntaxKind.Identifier,
                       SyntaxKind.ArrayLiteralExpression,
                       SyntaxKind.StringLiteral,
+                      SyntaxKind.ObjectLiteralExpression,
                     ],
                   ) as Expression,
               ),
