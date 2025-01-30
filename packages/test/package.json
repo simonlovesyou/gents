@@ -1,0 +1,44 @@
+{
+  "name": "@gents/test",
+  "version": "0.0.1",
+  "description": "",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "dist/index.cjs",
+    "dist/index.js",
+    "dist/index.d.ts"
+  ],
+  "main": "index.js",
+  "types": "./dist/index.d.ts",
+  "packageManager": "bun@1.0.33",
+  "scripts": {
+    "test": "vitest ./test.spec.ts"
+  },
+  "author": {
+    "email": "simonljohansson92@gmail.com",
+    "url": "https://github.com/simonlovesyou",
+    "name": "Simon Johansson"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^8.4.1",
+    "@gents/codegen": "workspace:*",
+    "@gents/parser": "workspace:*",
+    "@total-typescript/shoehorn": "^0.1.2",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.14.8",
+    "@types/object.groupby": "^1.0.4",
+    "object.groupby": "^1.0.3",
+    "ts-dedent": "^2.2.0",
+    "ts-jest": "^29.1.5",
+    "ts-morph": "21.0.1",
+    "tsup": "8.0.2",
+    "typescript": "5.3.3",
+    "vitest": "^2.0.3"
+  },
+  "peerDependencies": {},
+  "dependencies": {
+    "prettier": "^3.3.3"
+  }
+}
