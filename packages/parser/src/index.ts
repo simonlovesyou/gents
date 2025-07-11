@@ -29,23 +29,26 @@ const getNameFromNode = (node: Node) => {
 
 // findType and isTypeReference functions are now part of the logger package
 
-const parsePropertySymbol = (property: Symbol) => {
+const parsePropertySymbol = (property: Symbol, program?: Program) => {
   const escapedName = property.getEscapedName()
+  const valueDeclaration = property.getValueDeclarationOrThrow()
   
   if (process.env.NODE_ENV === "test") {
-    const valueDeclaration = property.getValueDeclarationOrThrow()
     logNode(valueDeclaration, {
       message: `Parsing property "${escapedName}"`,
       depth: 2
     })
   }
 
-  const propertyType = property.getValueDeclarationOrThrow().getType()
+  const propertyType = valueDeclaration.getType()
 
   return {
     type: "objectProperty" as const,
     name: escapedName,
-    property: parseType(propertyType),
+    // Don't pass the property node to parseType - this would incorrectly trigger alias logic
+    // The property node is for the declaration "companies: Company[]", not the type "Company[]"
+    // But pass it as loggingNode to get enhanced logging without affecting parsing logic
+    property: parseType(propertyType, { program, loggingNode: valueDeclaration }),
     optional: (property.getFlags() & SymbolFlags.Optional) !== 0,
   }
 }
@@ -82,12 +85,16 @@ export type ObjectEntity = {
   properties: Array<ObjectPropertyEntity>
 }
 
+export type TupleElementEntity = (Exclude<Entity, DeclarationEntity>) & {
+  optional?: boolean
+}
+
 export type ArrayEntity =
   | {
       type: "array"
       readonly: boolean
       tuple: true
-      elements: Array<Entity>
+      elements: Array<TupleElementEntity>
     }
   | {
       type: "array"
@@ -185,16 +192,22 @@ export type Entity =
 
 const parseType = (
   type: Type,
-  node?: Node,
-  program?: Program,
+  context: {
+    node?: Node
+    program?: Program
+    loggingNode?: Node  // Separate node for logging that doesn't affect parsing logic
+  } = {}
 ): Exclude<Entity, DeclarationEntity> => {
+  const { node, program, loggingNode } = context
   const typeChecker = program?.getTypeChecker()
   const aliasSymbol = type.getAliasSymbol()
   const symbol = type?.getSymbol()
 
-  if (process.env.NODE_ENV === "test" && node) {
+  if (process.env.NODE_ENV === "test" && (node || loggingNode)) {
     // The logger now includes all type analysis: isTypeReference, flags, symbols, etc.
-    logNode(node, {
+    const nodeToLog = loggingNode || node
+    logNode(nodeToLog, {
+      message: `Parsing type: ${type.getText()} (apparent: ${type.getApparentType().getText()})`,
       depth: 1,
       tsMorphType: type
     })
@@ -206,8 +219,6 @@ const parseType = (
   if (aliasSymbol && node === undefined) {
     const aliasDeclarations = aliasSymbol.getDeclarations()
     const declarations = symbol?.getDeclarations() ?? []
-
-    // console.log({ aliasDeclarations, typeDeclaration, rest })
 
     const matchingDeclaration = declarations.find((declaration) =>
       aliasDeclarations.some(
@@ -246,21 +257,54 @@ const parseType = (
       })
     }
 
+    const tupleElements = type.getTupleElements()
+    
+    // Access the TypeScript compiler type to get optional element information
+    const compilerType = type.compilerType as any
+    const elementFlags = compilerType.target?.elementFlags || compilerType.elementFlags
+    
     return {
       type: "array",
       tuple: true,
       readonly: false,
-      elements: type
-        .getTupleElements()
-        .map((tupleElement) => parseType(tupleElement)),
+      elements: tupleElements.map((tupleElement, index) => {
+        const elementEntity = parseType(tupleElement, { program })
+        
+        // Check if this element is optional
+        // ElementFlags.Optional = 2 in TypeScript compiler
+        const isOptional = elementFlags && elementFlags[index] === 2
+        
+        if (isOptional) {
+          const { type: entityType, ...rest } = elementEntity
+          return {
+            type: entityType,
+            optional: true,
+            ...rest
+          } as TupleElementEntity
+        }
+        
+        return elementEntity
+      }),
     }
   }
   if (type.isArray()) {
+    const elementType = type.getArrayElementTypeOrThrow()
+    
+    if (process.env.NODE_ENV === "test" && (node ?? loggingNode)) {
+      // Log array element details with enhanced information
+      const nodeToLog = loggingNode ?? node
+      logNode(nodeToLog, {
+        message: `ArrayElement: ${elementType.getText()}`,
+        depth: 3,
+        tsMorphType: elementType
+      })
+    }
+    
     return {
       type: "array" as const,
       readonly: false,
       tuple: false,
-      elements: parseType(type.getArrayElementTypeOrThrow()),
+      elements: parseType(elementType, { program }),
     }
   }
   // Type reference information is automatically captured in the logger's TypeAnalysis
@@ -288,7 +332,7 @@ const parseType = (
   if (type.isObject()) {
     return {
       type: "object" as const,
-      properties: type.getProperties().map(parsePropertySymbol),
+      properties: type.getProperties().map(property => parsePropertySymbol(property, program)),
       // apparentProperties: type.getApparentProperties().map(parsePropertySymbol),
     }
   }
@@ -332,7 +376,7 @@ const parseType = (
   if (type.isEnum()) {
     return {
       type: "enum" as const,
-      properties: type.getApparentProperties().map(parsePropertySymbol),
+      properties: type.getApparentProperties().map(property => parsePropertySymbol(property, program)),
     }
   }
 
@@ -347,7 +391,7 @@ const parseType = (
 
     return {
       type: "object" as const,
-      properties: properties.map(parsePropertySymbol),
+      properties: properties.map(property => parsePropertySymbol(property, program)),
     }
   }
 
@@ -420,10 +464,6 @@ const parseType = (
     }
   }
 
-  // if (type.isTypeParameter()) {
-  //   return type.getText();
-  // }
-
   if (type.isUndefined()) {
     return {
       type: "literal" as const,
@@ -435,7 +475,7 @@ const parseType = (
     const unionTypes = type.getUnionTypes()
     return {
       type: "union" as const,
-      values: unionTypes.map((type) => parseType(type)),
+      values: unionTypes.map((unionType) => parseType(unionType, { program })),
     }
   }
 
@@ -467,7 +507,7 @@ const parseTypeDeclaration = (
     return {
       type: "declaration",
       name: typeDeclaration.getName(),
-      declaration: parseType(type, typeDeclaration, program),
+      declaration: parseType(type, { node: typeDeclaration, program }),
       exported: Boolean(exportKeyword),
     }
   }
@@ -475,7 +515,7 @@ const parseTypeDeclaration = (
   return {
     type: "declaration",
     name: typeDeclaration.getName(),
-    declaration: parseType(type, typeDeclaration, program),
+    declaration: parseType(type, { node: typeDeclaration, program }),
     exported: Boolean(exportKeyword),
   }
 }

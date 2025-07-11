@@ -95,7 +95,7 @@ describe("codegen", () => {
 ]
 `)
     })
-    it.skip("should correctly parse optional tuple members", () => {
+    it("should correctly parse optional tuple members", () => {
       const project = new Project({ useInMemoryFileSystem: true })
 
       project.createSourceFile(
@@ -112,6 +112,7 @@ describe("codegen", () => {
         .toMatchInlineSnapshot(`
 [
   {
+    "optional": true,
     "type": "number",
   },
 ]
