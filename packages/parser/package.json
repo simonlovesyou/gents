@@ -21,6 +21,9 @@
     "name": "Simon Johansson"
   },
   "license": "MIT",
+  "dependencies": {
+    "@gents/logger": "workspace:*"
+  },
   "devDependencies": {
     "@types/jest": "^29.5.12",
     "@types/node": "^20.14.8",

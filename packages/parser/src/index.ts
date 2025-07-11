@@ -15,6 +15,7 @@ import {
   TypeFormatFlags,
 } from "ts-morph"
 import { PseudoBigInt } from "typescript"
+import { logNode } from "@gents/logger"
 
 const getNameFromNode = (node: Node) => {
   return node.isKind(SyntaxKind.InterfaceDeclaration)
@@ -26,51 +27,18 @@ const getNameFromNode = (node: Node) => {
         : "unknown"
 }
 
-const findType = (type: Type) => {
-  const keys = [
-    "isAnonymous",
-    "isAny",
-    "isNever",
-    "isArray",
-    "isReadonlyArray",
-    "isTemplateLiteral",
-    "isBoolean",
-    "isString",
-    "isNumber",
-    "isLiteral",
-    "isBooleanLiteral",
-    "isEnumLiteral",
-    "isNumberLiteral",
-    "isStringLiteral",
-    "isClass",
-    "isClassOrInterface",
-    "isEnum",
-    "isInterface",
-    "isObject",
-    "isTypeParameter",
-    "isTuple",
-    "isUnion",
-    "isIntersection",
-    "isUnionOrIntersection",
-    "isUnknown",
-    "isNull",
-    "isUndefined",
-    "isVoid",
-  ] as const
-  return keys
-    .filter((key) => type[key]())
-    .reduce(
-      (acc, key) => ({ ...acc, [key]: true }),
-      {} as Partial<Record<(typeof keys)[number], boolean>>,
-    )
-}
-
-const isTypeReference = (type: Type) =>
-  (type.getObjectFlags() & ObjectFlags.Reference) !== 0
+// findType and isTypeReference functions are now part of the logger package
 
 const parsePropertySymbol = (property: Symbol) => {
   const escapedName = property.getEscapedName()
-  console.log(`Parsing property "${escapedName}"`)
+  
+  if (process.env.NODE_ENV === "test") {
+    const valueDeclaration = property.getValueDeclarationOrThrow()
+    logNode(valueDeclaration, {
+      message: `Parsing property "${escapedName}"`,
+      depth: 2
+    })
+  }
 
   const propertyType = property.getValueDeclarationOrThrow().getType()
 
@@ -223,39 +191,14 @@ const parseType = (
   const typeChecker = program?.getTypeChecker()
   const aliasSymbol = type.getAliasSymbol()
   const symbol = type?.getSymbol()
-  const typeAtLocation = node && symbol && symbol.getTypeAtLocation(node)
-  const apparentType = type.getApparentType()
-  const apparentTypeAliasSymbol = type.getApparentType().getAliasSymbol()
-  const apparentTypeSymbol = type.getApparentType().getSymbol()
-  const aliasedSymbol = symbol && typeChecker?.getAliasedSymbol(symbol)
 
-  process.env.NODE_ENV === "test" &&
-    console.log("=====================================================")
-  process.env.NODE_ENV === "test" &&
-    console.log(`Parsing type with text: "${type.getText()}"`)
-  process.env.NODE_ENV === "test" &&
-    console.log(`Parsing with apparenty type: "${apparentType.getText()}"`)
-  process.env.NODE_ENV === "test" &&
-    node &&
-    console.log(`Parsing node: "${node.getFullText()}"`)
-
-  process.env.NODE_ENV === "test" &&
-    console.log({
-      apparent: findType(apparentType),
-      type: findType(type),
-      kindName: node?.getKindName(),
-      aliasSymbol,
-      typeAtLocation: typeAtLocation?.getText(),
-      aliasedSymbol,
-      apparentTypeAliasSymbol,
-      apparentTypeSymbol,
-      targetTypeObjectFlags: type.getTargetType()?.getObjectFlags(),
-      apparentTypeObjectFlags: apparentType.getObjectFlags(),
-      symbol,
-      node,
-      flags: type.getFlags(),
-      objectFlags: type.getObjectFlags(),
+  if (process.env.NODE_ENV === "test" && node) {
+    // The logger now includes all type analysis: isTypeReference, flags, symbols, etc.
+    logNode(node, {
+      depth: 1,
+      tsMorphType: type
     })
+  }
 
   const typeString =
     symbol && node && typeChecker?.getTypeText(type, node, formatFlags)
@@ -294,22 +237,14 @@ const parseType = (
   }
 
   if (type.isTuple()) {
-    const tupleIndexes = type.getTupleElements().map((_, index) => `${index}`)
-
-    process.env.NODE_ENV === "test" &&
-      console.log(
-        type.getTargetTypeOrThrow().getFlags(),
-        type.getTargetTypeOrThrow().getObjectFlags(),
-        type.compilerType
-          .getProperties()
-          .filter((property) =>
-            tupleIndexes.includes(property.escapedName as string),
-          )
-          .map(
-            (typeSymbol) =>
-              (typeSymbol.getFlags() & SymbolFlags.Optional) !== 0,
-          ),
-      )
+    if (process.env.NODE_ENV === "test") {
+      // Log tuple with type analysis - the logger will show isTuple in TypeFlags
+      logNode(node, {
+        message: `Processing tuple type with ${type.getTupleElements().length} elements`,
+        depth: 2,
+        tsMorphType: type
+      })
+    }
 
     return {
       type: "array",
@@ -328,14 +263,9 @@ const parseType = (
       elements: parseType(type.getArrayElementTypeOrThrow()),
     }
   }
-  console.log(
-    "Is type reference ",
-    isTypeReference(type),
-    symbol?.getFlags(),
-    symbol && symbol.getFlags() & SymbolFlags.TypeAliasExcludes,
-  )
+  // Type reference information is automatically captured in the logger's TypeAnalysis
   if (
-    (isTypeReference(type) || symbol) &&
+    ((type.getObjectFlags() & ObjectFlags.Reference) !== 0 || symbol) &&
     node === undefined &&
     symbol &&
     (symbol.getFlags() & SymbolFlags.TypeLiteral) === 0
@@ -343,7 +273,12 @@ const parseType = (
     const [declaration] = type.getSymbolOrThrow().getDeclarations() ?? []
 
     if (declaration) {
-      console.log("First declaration", declaration.getText())
+      if (process.env.NODE_ENV === "test") {
+        logNode(declaration, {
+          message: "Found type reference declaration",
+          depth: 2
+        })
+      }
       return {
         type: "reference" as const,
         reference: getNameFromNode(declaration),
@@ -518,8 +453,15 @@ const parseTypeDeclaration = (
   program: Program,
 ): DeclarationEntity => {
   const type = typeDeclaration.getType()
-
   const exportKeyword = typeDeclaration.getExportKeyword()
+
+  if (process.env.NODE_ENV === "test") {
+    // The new logNode auto-detects ts-morph nodes and includes comprehensive analysis
+    logNode(typeDeclaration, {
+      depth: 0,
+      tsMorphType: type
+    })
+  }
 
   if (typeDeclaration.isKind(SyntaxKind.InterfaceDeclaration)) {
     return {
@@ -549,6 +491,14 @@ const parseSourceFile = (sourceFile: SourceFile, program: Program) => {
         ),
     )
 
+  if (process.env.NODE_ENV === "test") {
+    // Log file processing as a structured message
+    logNode(sourceFile, {
+      message: `📄 Processing source file with ${typeDeclarations.length} type declarations`,
+      depth: 0
+    })
+  }
+
   return {
     type: "file" as const,
     name: sourceFile.getBaseName(),
@@ -563,13 +513,20 @@ export function parse(project: Project) {
   const sourceFiles = project.getSourceFiles()
   const program = project.getProgram()
 
-  return sourceFiles
-    .filter((sourceFile) =>
-      process.env.NODE_ENV !== "test"
-        ? sourceFile.getFilePath().includes("generated/review-management.ts")
-        : true,
-    )
-    .map((sourceFile) => parseSourceFile(sourceFile, program))
+  const filteredSourceFiles = sourceFiles.filter((sourceFile) =>
+    process.env.NODE_ENV !== "test"
+      ? sourceFile.getFilePath().includes("generated/review-management.ts")
+      : true,
+  )
+
+  if (process.env.NODE_ENV === "test") {
+    // Log parsing overview as a structured message
+    // Note: We can't use logNode here since there's no specific node, but we could enhance 
+    // the logger to support general structured logging if needed
+    console.log(`🚀 Starting TypeScript AST parsing: ${filteredSourceFiles.length}/${sourceFiles.length} files`)
+  }
+
+  return filteredSourceFiles.map((sourceFile) => parseSourceFile(sourceFile, program))
 }
 
 if (process.env.NODE_ENV !== "test") {
