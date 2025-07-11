@@ -238,6 +238,12 @@ function extractTypeAnalysis(type: Type, apparentType?: Type, symbol?: any, node
   if (symbol) {
     analysis.symbolFlags = symbol.getFlags()
     analysis.hasTypeAliasExcludes = (symbol.getFlags() & SymbolFlags.TypeAliasExcludes) !== 0
+    
+    // Add value declaration information if available
+    const valueDeclaration = symbol.getValueDeclaration?.()
+    if (valueDeclaration) {
+      analysis.valueDeclaration = valueDeclaration.getText()
+    }
   }
 
   // Add alias information
@@ -458,6 +464,14 @@ const formatLog = format.combine(
         if (typeAnalysis.isTypeReference) {
           typeAnalysisLines.push(chalk.blue(indent + "IsReference  : ") + "true")
         }
+
+        if (typeAnalysis.valueDeclaration) {
+          typeAnalysisLines.push(chalk.blue(indent + "ValueDeclaration: ") + typeAnalysis.valueDeclaration)
+        }
+
+        if (typeAnalysis.objectFlags) {
+          typeAnalysisLines.push(chalk.blue(indent + "ObjectFlags  : ") + typeAnalysis.objectFlags)
+        }
         
         // Add all type analysis lines to the main lines array
         lines.push(...typeAnalysisLines)
@@ -469,16 +483,11 @@ const formatLog = format.combine(
           ? highlightInSource(info.fullText, info.nodeText)
           : chalk.bold(chalk.yellow(info.fullText))
         
-        lines.push(chalk.green(lastIndent + "Source:"))
+        // Format source as inline markdown code block - trim and indent properly
+        const trimmedSource = highlightedSource.trim()
+        const indentedSource = trimmedSource.split('\n').map(line => `      ${line}`).join('\n')
         
-        // Add indented source code
-        const sourceLines = highlightedSource.split('\n')
-        const sourceIndent = createSourceIndentation(depth)
-        sourceLines.forEach(line => {
-          if (line.trim()) {
-            lines.push(sourceIndent + chalk.dim("    ") + line)
-          }
-        })
+        lines.push(chalk.green(lastIndent.replace('└─', '├─') + "Source: ") + chalk.cyan("```ts") + "\n" + indentedSource + "\n      " + chalk.cyan("```"))
       }
 
       // Add any custom message
