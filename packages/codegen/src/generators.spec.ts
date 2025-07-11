@@ -4,8 +4,8 @@ import {
   ObjectPropertyEntity,
 } from "@gents/parser"
 import { generators } from "./generators"
-import { printNode } from "ts-morph"
-import { describe, it, expect } from "vitest"
+import { printNode, Project } from "ts-morph"
+import { describe, it, expect, vi } from "vitest"
 import { next } from "."
 
 describe("generators", () => {
@@ -29,6 +29,7 @@ describe("generators", () => {
     fileEntity: undefined as unknown as FileEntity,
     hints: [],
     addImportDeclaration: () => {},
+    project: new Project(),
   }
   describe("string", () => {
     it("should by default create `faker.string.alpha()` call expression", () => {
@@ -197,6 +198,7 @@ describe("generators", () => {
                 fileEntity: undefined as unknown as FileEntity,
                 hints: [{ name: "name", value: hintValue, level: 1 }],
                 addImportDeclaration: () => {},
+                project: new Project(),
               },
             )
 
@@ -223,6 +225,7 @@ describe("generators", () => {
                 { name: "company", value: "company", level: 1 },
               ],
               addImportDeclaration: () => {},
+              project: new Project(),
             },
           )
 
@@ -249,6 +252,7 @@ describe("generators", () => {
                 { name: "currencyCode", value: "currencyCode", level: 1 },
               ],
               addImportDeclaration: () => {},
+              project: new Project(),
             },
           )
 
@@ -273,6 +277,7 @@ describe("generators", () => {
               fileEntity: undefined as unknown as FileEntity,
               hints: [{ name: "id", value: "name", level: 1 }],
               addImportDeclaration: () => {},
+              project: new Project(),
             },
           )
 
@@ -297,6 +302,7 @@ describe("generators", () => {
               fileEntity: undefined as unknown as FileEntity,
               hints: [{ name: "url", value: "url", level: 1 }],
               addImportDeclaration: () => {},
+              project: new Project(),
             },
           )
 
@@ -324,6 +330,7 @@ describe("generators", () => {
                 { name: "avatar", value: "avatar", level: 2 },
               ],
               addImportDeclaration: () => {},
+              project: new Project(),
             },
           )
 
@@ -348,6 +355,7 @@ describe("generators", () => {
               fileEntity: undefined as unknown as FileEntity,
               hints: [{ name: "avatar", value: "avatar", level: 1 }],
               addImportDeclaration: () => {},
+              project: new Project(),
             },
           )
 
@@ -355,22 +363,6 @@ describe("generators", () => {
             `"faker.image.avatar()"`,
           )
         })
-      })
-    })
-  })
-  describe("reference", () => {
-    describe("Date", () => {
-      const result = generators.reference.create(
-        {
-          type: "reference",
-          reference: "Date",
-        },
-        {
-          ...defaultContext,
-        },
-      )
-      it("should generate the correct output", () => {
-        expect(printNode(result)).toMatchInlineSnapshot(`"faker.date.anytime()"`)
       })
     })
   })
@@ -395,6 +387,818 @@ describe("generators", () => {
           "faker.helpers.multiple(() => generateFoo(), {
               count: test?.length ?? { max: faker.number.int(42), min: 0 }
           })"
+        `)
+      })
+    })
+
+    describe("element = string", () => {
+      it("should generate faker.helpers.multiple with string generator", () => {
+        const result = generators.array.create(
+          {
+            type: "array",
+            elements: { type: "string" },
+            readonly: false,
+            tuple: false,
+          },
+          {
+            ...defaultContext,
+            next: (context, entity) => {
+              if (entity.type === "string") {
+                return generators.string.create(entity as any, context)
+              }
+              throw new Error("Unhandled entity type")
+            },
+          },
+        )
+        expect(printNode(result)).toMatchInlineSnapshot(`
+          "faker.helpers.multiple(() => faker.string.alpha(), {
+              count: test?.length ?? { max: faker.number.int(42), min: 0 }
+          })"
+        `)
+      })
+    })
+
+    describe("tuple array", () => {
+      it("should generate array literal for tuple with specific elements", () => {
+        const result = generators.array.create(
+          {
+            type: "array",
+            elements: [
+              { type: "string" },
+              { type: "number" },
+              { type: "boolean" },
+            ],
+            readonly: false,
+            tuple: true,
+          },
+          {
+            ...defaultContext,
+            next: (context, entity) => {
+              if (entity.type === "string") {
+                return generators.string.create(entity as any, context)
+              }
+              if (entity.type === "number") {
+                return generators.number.create(entity as any, context)
+              }
+              if (entity.type === "boolean") {
+                return generators.boolean.create(entity as any, context)
+              }
+              throw new Error("Unhandled entity type")
+            },
+          },
+        )
+        expect(printNode(result)).toMatchInlineSnapshot(`"[faker.string.alpha(), faker.number.int(), faker.datatype.boolean()]"`)
+      })
+
+      it("should generate array literal for tuple with optional elements", () => {
+        const result = generators.array.create(
+          {
+            type: "array",
+            elements: [
+              { type: "string" },
+              { type: "number", optional: true },
+            ],
+            readonly: false,
+            tuple: true,
+          },
+          {
+            ...defaultContext,
+            next: (context, entity) => {
+              if (entity.type === "string") {
+                return generators.string.create(entity as any, context)
+              }
+              if (entity.type === "number") {
+                return generators.number.create(entity as any, context)
+              }
+              throw new Error("Unhandled entity type")
+            },
+          },
+        )
+        expect(printNode(result)).toMatchInlineSnapshot(`"[faker.string.alpha(), faker.number.int()]"`)
+      })
+    })
+  })
+
+  describe("reference", () => {
+    describe("Date", () => {
+      const result = generators.reference.create(
+        {
+          type: "reference",
+          reference: "Date",
+        },
+        {
+          ...defaultContext,
+        },
+      )
+      it("should generate the correct output", () => {
+        expect(printNode(result)).toMatchInlineSnapshot(`"faker.date.anytime()"`)
+      })
+    })
+
+    describe("custom type reference", () => {
+      it("should generate call to generated function for User type", () => {
+        const result = generators.reference.create(
+          {
+            type: "reference",
+            reference: "User",
+          },
+          defaultContext,
+        )
+        expect(printNode(result)).toMatchInlineSnapshot(`"generateUser()"`)
+      })
+
+      it("should generate call to generated function for ProductInfo type", () => {
+        const result = generators.reference.create(
+          {
+            type: "reference",
+            reference: "ProductInfo",
+          },
+          defaultContext,
+        )
+        expect(printNode(result)).toMatchInlineSnapshot(`"generateProductInfo()"`)
+      })
+    })
+  })
+
+  describe("anonymous", () => {
+    it("should generate anonymous string literal", () => {
+      const result = generators.anonymous.create(
+        { type: "anonymous" },
+        defaultContext,
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(`""anonymous""`)
+    })
+  })
+
+  describe("any", () => {
+    it("should generate any string literal", () => {
+      const result = generators.any.create({ type: "any" }, defaultContext)
+      expect(printNode(result)).toMatchInlineSnapshot(`""any""`)
+    })
+  })
+
+  describe("boolean", () => {
+    it("should generate faker.datatype.boolean() call", () => {
+      const result = generators.boolean.create(
+        { type: "boolean" },
+        defaultContext,
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(
+        `"faker.datatype.boolean()"`,
+      )
+    })
+  })
+
+  describe("booleanLiteral", () => {
+    it("should generate faker.datatype.boolean() call for true literal", () => {
+      const result = generators.booleanLiteral.create(
+        { type: "booleanLiteral", value: true },
+        defaultContext,
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(
+        `"faker.datatype.boolean()"`,
+      )
+    })
+
+    it("should generate faker.datatype.boolean() call for false literal", () => {
+      const result = generators.booleanLiteral.create(
+        { type: "booleanLiteral", value: false },
+        defaultContext,
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(
+        `"faker.datatype.boolean()"`,
+      )
+    })
+  })
+
+  describe("number", () => {
+    it("should generate faker.number.int() call", () => {
+      const result = generators.number.create({ type: "number" }, defaultContext)
+      expect(printNode(result)).toMatchInlineSnapshot(`"faker.number.int()"`)
+    })
+  })
+
+  describe("literal", () => {
+    it("should generate numeric literal for number values", () => {
+      const result = generators.literal.create(
+        { type: "literal", value: 42 },
+        defaultContext,
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(`"42"`)
+    })
+
+    it("should generate string literal for string values", () => {
+      const result = generators.literal.create(
+        { type: "literal", value: "hello" },
+        defaultContext,
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(`""hello""`)
+    })
+
+    it("should generate undefined identifier for undefined values", () => {
+      const result = generators.literal.create(
+        { type: "literal", value: undefined },
+        defaultContext,
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(`"undefined"`)
+    })
+
+    it("should generate null literal for null values", () => {
+      const result = generators.literal.create(
+        { type: "literal", value: null },
+        defaultContext,
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(`"null"`)
+    })
+  })
+
+  describe("enumLiteral", () => {
+    it("should generate enumLiteral string literal", () => {
+      const result = generators.enumLiteral.create(
+        { type: "enumLiteral" },
+        defaultContext,
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(`""enumLiteral""`)
+    })
+  })
+
+  describe("never", () => {
+    it("should generate any string literal", () => {
+      const result = generators.never.create({ type: "never" }, defaultContext)
+      expect(printNode(result)).toMatchInlineSnapshot(`""any""`)
+    })
+  })
+
+  describe("enum", () => {
+    it("should generate objectProperty string literal", () => {
+      const result = generators.enum.create(
+        {
+          type: "enum",
+          properties: [
+            {
+              name: "VALUE_ONE",
+              property: { type: "literal", value: "one" },
+              optional: false,
+            },
+          ],
+        },
+        defaultContext,
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(`""objectProperty""`)
+    })
+  })
+
+  describe("unknown", () => {
+    it("should generate enumLiteral string literal", () => {
+      const result = generators.unknown.create(
+        { type: "unknown" },
+        defaultContext,
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(`""enumLiteral""`)
+    })
+  })
+
+  describe("object", () => {
+    it("should generate object literal with string property", () => {
+      const result = generators.object.create(
+        {
+          type: "object",
+          properties: [
+            {
+              type: "objectProperty",
+              name: "name",
+              property: { type: "string" },
+              optional: false,
+            },
+          ],
+        },
+        {
+          ...defaultContext,
+          next: (context, entity) => {
+            if (entity.type === "objectProperty") {
+              return generators.objectProperty.create(entity as any, context)
+            }
+            if (entity.type === "string") {
+              return generators.string.create(entity as any, context)
+            }
+            throw new Error("Unhandled entity type")
+          },
+        },
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(`
+        "{
+            name: faker.string.alpha()
+        }"
+      `)
+    })
+
+    it("should generate object literal with multiple properties", () => {
+      const result = generators.object.create(
+        {
+          type: "object",
+          properties: [
+            {
+              type: "objectProperty",
+              name: "id",
+              property: { type: "number" },
+              optional: false,
+            },
+            {
+              type: "objectProperty",
+              name: "email",
+              property: { type: "string" },
+              optional: true,
+            },
+          ],
+        },
+        {
+          ...defaultContext,
+          next: (context, entity) => {
+            if (entity.type === "objectProperty") {
+              return generators.objectProperty.create(entity as any, context)
+            }
+            if (entity.type === "string") {
+              return generators.string.create(entity as any, context)
+            }
+            if (entity.type === "number") {
+              return generators.number.create(entity as any, context)
+            }
+            throw new Error("Unhandled entity type")
+          },
+        },
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(`
+        "{
+            id: faker.number.int(),
+            email: faker.string.alpha()
+        }"
+      `)
+    })
+
+    it("should generate empty object literal for no properties", () => {
+      const result = generators.object.create(
+        {
+          type: "object",
+          properties: [],
+        },
+        defaultContext,
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(`"{}"`)
+    })
+  })
+
+  describe("union", () => {
+    it("should generate faker.helpers.arrayElement call with string literals", () => {
+      const result = generators.union.create(
+        {
+          type: "union",
+          values: [
+            { type: "literal", value: "red" },
+            { type: "literal", value: "green" },
+            { type: "literal", value: "blue" },
+          ],
+        },
+        {
+          ...defaultContext,
+          next: (context, entity) => {
+            if (entity.type === "literal") {
+              return generators.literal.create(entity as any, context)
+            }
+            throw new Error("Unhandled entity type")
+          },
+        },
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(`"faker.helpers.arrayElement(["red", "green", "blue"] as const)"`)
+    })
+
+    it("should generate faker.helpers.arrayElement call with mixed types", () => {
+      const result = generators.union.create(
+        {
+          type: "union",
+          values: [
+            { type: "literal", value: "text" },
+            { type: "literal", value: 42 },
+            { type: "boolean" },
+          ],
+        },
+        {
+          ...defaultContext,
+          next: (context, entity) => {
+            if (entity.type === "literal") {
+              return generators.literal.create(entity as any, context)
+            }
+            if (entity.type === "boolean") {
+              return generators.boolean.create(entity as any, context)
+            }
+            throw new Error("Unhandled entity type")
+          },
+        },
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(`"faker.helpers.arrayElement(["text", 42, faker.datatype.boolean()] as const)"`)
+    })
+  })
+
+  describe("alias", () => {
+    it("should generate call to generated function with camelCase name", () => {
+      const result = generators.alias.create(
+        { type: "alias", alias: "UserProfile" },
+        defaultContext,
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(`"generateUserProfile()"`)
+    })
+
+    it("should generate call for single word alias", () => {
+      const result = generators.alias.create(
+        { type: "alias", alias: "User" },
+        defaultContext,
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(`"generateUser()"`)
+    })
+  })
+
+  describe("intersection", () => {
+    it("should generate object literal with intersection property", () => {
+      const result = generators.intersection.create(
+        { type: "intersection" },
+        defaultContext,
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(`
+        "{
+            intersection: true
+        }"
+      `)
+    })
+  })
+
+  describe("utility", () => {
+    it("should generate object literal with utility property", () => {
+      const result = generators.utility.create(
+        { type: "utility" },
+        defaultContext,
+      )
+      expect(printNode(result)).toMatchInlineSnapshot(`
+        "{
+            utility: true
+        }"
+      `)
+    })
+  })
+
+  describe("declaration", () => {
+    const createMockContext = (overrides = {}) => ({
+      ...defaultContext,
+      fileEntity: {
+        type: "file" as const,
+        name: "test.ts",
+        path: "./test.ts",
+        typeDeclarations: [],
+      },
+      addImportDeclaration: vi.fn(),
+      project: {
+        getCompilerOptions: () => ({ exactOptionalPropertyTypes: false }),
+      } as any,
+      next: (context, entity) => {
+        if (entity.type === "object") {
+          return generators.object.create(entity as any, context)
+        }
+        if (entity.type === "objectProperty") {
+          return generators.objectProperty.create(entity as any, context)
+        }
+        if (entity.type === "string") {
+          return generators.string.create(entity as any, context)
+        }
+        if (entity.type === "number") {
+          return generators.number.create(entity as any, context)
+        }
+        if (entity.type === "union") {
+          return generators.union.create(entity as any, context)
+        }
+        if (entity.type === "literal") {
+          return generators.literal.create(entity as any, context)
+        }
+        throw new Error(`Unhandled entity type: ${entity.type}`)
+      },
+      ...overrides,
+    })
+
+    describe("basic object declaration", () => {
+      it("should generate function declaration for simple object type", () => {
+        const mockContext = createMockContext()
+        const result = generators.declaration.create(
+          {
+            type: "declaration",
+            name: "User",
+            exported: true,
+            declaration: {
+              type: "object",
+              properties: [
+                {
+                  type: "objectProperty",
+                  name: "name",
+                  property: { type: "string" },
+                  optional: false,
+                },
+                {
+                  type: "objectProperty",
+                  name: "age",
+                  property: { type: "number" },
+                  optional: false,
+                },
+              ],
+            },
+          },
+          mockContext,
+        )
+
+        expect(printNode(result)).toMatchInlineSnapshot(`
+          "{
+              function generateUser<const T extends PartialDeep<User>>(user?: T, options?: {
+                  seed: number | number[];
+              }) { if (options?.seed !== undefined) {
+                  faker.seed(options.seed);
+              } return merge({
+                  name: faker.string.alpha(),
+                  age: faker.number.int()
+              } as const satisfies ReadonlyDeep<User>, user ?? {}) as SimplifyDeep<User & T>; }
+          }"
+        `)
+        expect(mockContext.addImportDeclaration).toHaveBeenCalledWith({
+          named: [{ name: "User", typeOnly: true }],
+          specifier: "./test.ts",
+          typeOnly: false,
+        })
+      })
+    })
+
+    describe("union with undefined", () => {
+      it("should generate function overloads for union type with undefined", () => {
+        const mockContext = createMockContext()
+        const result = generators.declaration.create(
+          {
+            type: "declaration",
+            name: "OptionalUser",
+            exported: true,
+            declaration: {
+              type: "union",
+              values: [
+                {
+                  type: "object",
+                  properties: [
+                    {
+                      type: "objectProperty",
+                      name: "name",
+                      property: { type: "string" },
+                      optional: false,
+                    },
+                  ],
+                },
+                { type: "literal", value: undefined },
+              ],
+            },
+          },
+          mockContext,
+        )
+
+        expect(printNode(result)).toMatchInlineSnapshot(`
+          "{
+              function generateOptionalUser(optionalUser: typeof _, options?: {
+                  seed: number | number[];
+              }): OptionalUser;
+              function generateOptionalUser<const T extends OptionalUser | typeof _>(generateOptionalUser?: T, options?: {
+                  seed: number | number[];
+              }): T extends undefined ? SubscriptionTier : T;
+              function generateOptionalUser<const T extends OptionalUser>(optionalUser?: T, options?: {
+                  seed: number | number[];
+              }) { if (options?.seed !== undefined) {
+                  faker.seed(options.seed);
+              } return "0" in arguments && optionalUser !== _ ? optionalUser : faker.helpers.arrayElement([{
+                      name: faker.string.alpha()
+                  }, undefined] as const); }
+          }"
+        `)
+      })
+    })
+
+    describe("union without undefined", () => {
+      it("should generate function with nullish coalescing for regular union", () => {
+        const mockContext = createMockContext()
+        const result = generators.declaration.create(
+          {
+            type: "declaration",
+            name: "Status",
+            exported: true,
+            declaration: {
+              type: "union",
+              values: [
+                { type: "literal", value: "active" },
+                { type: "literal", value: "inactive" },
+              ],
+            },
+          },
+          mockContext,
+        )
+
+        expect(printNode(result)).toMatchInlineSnapshot(`
+          "{
+              function generateStatus<const T extends Status>(status?: T, options?: {
+                  seed: number | number[];
+              }) { if (options?.seed !== undefined) {
+                  faker.seed(options.seed);
+              } return (status ?? faker.helpers.arrayElement(["active", "inactive"] as const)) as Status & T; }
+          }"
+        `)
+      })
+    })
+
+    describe("string declaration", () => {
+      it("should generate function for simple string type", () => {
+        const mockContext = createMockContext()
+        const result = generators.declaration.create(
+          {
+            type: "declaration",
+            name: "Email",
+            exported: true,
+            declaration: { type: "string" },
+          },
+          mockContext,
+        )
+
+        expect(printNode(result)).toMatchInlineSnapshot(`
+          "{
+              function generateEmail<const T extends Email>(email?: T, options?: {
+                  seed: number | number[];
+              }) { if (options?.seed !== undefined) {
+                  faker.seed(options.seed);
+              } return merge(faker.string.alpha(), email ?? {}) as SimplifyDeep<Email & T>; }
+          }"
+        `)
+      })
+    })
+
+    describe("object with optional properties", () => {
+      it("should handle optional properties without exactOptionalPropertyTypes", () => {
+        const mockContext = createMockContext({
+          project: {
+            getCompilerOptions: () => ({ exactOptionalPropertyTypes: false }),
+          },
+        })
+
+        const result = generators.declaration.create(
+          {
+            type: "declaration",
+            name: "Profile",
+            exported: true,
+            declaration: {
+              type: "object",
+              properties: [
+                {
+                  type: "objectProperty",
+                  name: "name",
+                  property: { type: "string" },
+                  optional: false,
+                },
+                {
+                  type: "objectProperty",
+                  name: "bio",
+                  property: { type: "string" },
+                  optional: true,
+                },
+              ],
+            },
+          },
+          mockContext,
+        )
+
+        expect(printNode(result)).toMatchInlineSnapshot(`
+          "{
+              function generateProfile<const T extends PartialDeep<Profile>>(profile?: T, options?: {
+                  seed: number | number[];
+              }) { if (options?.seed !== undefined) {
+                  faker.seed(options.seed);
+              } return merge({
+                  name: faker.string.alpha(),
+                  bio: faker.string.alpha()
+              } as const satisfies ReadonlyDeep<Profile>, profile ?? {}) as SimplifyDeep<Profile & T>; }
+          }"
+        `)
+      })
+
+      it("should handle optional properties with exactOptionalPropertyTypes", () => {
+        const mockContext = createMockContext({
+          project: {
+            getCompilerOptions: () => ({ exactOptionalPropertyTypes: true }),
+          },
+        })
+
+        const result = generators.declaration.create(
+          {
+            type: "declaration",
+            name: "Profile",
+            exported: true,
+            declaration: {
+              type: "object",
+              properties: [
+                {
+                  type: "objectProperty",
+                  name: "name",
+                  property: { type: "string" },
+                  optional: false,
+                },
+                {
+                  type: "objectProperty",
+                  name: "bio",
+                  property: { type: "string" },
+                  optional: true,
+                },
+                {
+                  type: "objectProperty",
+                  name: "avatar",
+                  property: { type: "string" },
+                  optional: true,
+                },
+              ],
+            },
+          },
+          mockContext,
+        )
+
+        expect(printNode(result)).toMatchInlineSnapshot(`
+          "{
+              function generateProfile<const T extends PartialDeep<Profile>>(profile?: T, options?: {
+                  seed: number | number[];
+              }) { if (options?.seed !== undefined) {
+                  faker.seed(options.seed);
+              } return merge(omit(faker.helpers.arrayElements(["bio", "avatar"], { min: 0, max: 2 }), {
+                  name: faker.string.alpha(),
+                  bio: faker.string.alpha(),
+                  avatar: faker.string.alpha()
+              }) as const satisfies ReadonlyDeep<Profile>, profile ?? {}) as SimplifyDeep<Profile & T>; }
+          }"
+        `)
+      })
+    })
+
+    describe("import declarations", () => {
+      it("should add correct import declarations", () => {
+        const mockContext = createMockContext()
+        generators.declaration.create(
+          {
+            type: "declaration",
+            name: "TestType",
+            exported: true,
+            declaration: { type: "string" },
+          },
+          mockContext,
+        )
+
+        expect(mockContext.addImportDeclaration).toHaveBeenCalledWith({
+          named: [{ name: "TestType", typeOnly: true }],
+          specifier: "./test.ts",
+          typeOnly: false,
+        })
+      })
+    })
+
+    describe("function naming", () => {
+      it("should generate camelCase function names", () => {
+        const mockContext = createMockContext()
+        
+        const result1 = generators.declaration.create(
+          {
+            type: "declaration",
+            name: "UserProfile",
+            exported: true,
+            declaration: { type: "string" },
+          },
+          mockContext,
+        )
+        expect(printNode(result1)).toMatchInlineSnapshot(`
+          "{
+              function generateUserProfile<const T extends UserProfile>(userProfile?: T, options?: {
+                  seed: number | number[];
+              }) { if (options?.seed !== undefined) {
+                  faker.seed(options.seed);
+              } return merge(faker.string.alpha(), userProfile ?? {}) as SimplifyDeep<UserProfile & T>; }
+          }"
+        `)
+
+        const result2 = generators.declaration.create(
+          {
+            type: "declaration",
+            name: "APIResponse",
+            exported: true,
+            declaration: { type: "string" },
+          },
+          mockContext,
+        )
+        expect(printNode(result2)).toMatchInlineSnapshot(`
+          "{
+              function generateApiResponse<const T extends APIResponse>(apiResponse?: T, options?: {
+                  seed: number | number[];
+              }) { if (options?.seed !== undefined) {
+                  faker.seed(options.seed);
+              } return merge(faker.string.alpha(), apiResponse ?? {}) as SimplifyDeep<APIResponse & T>; }
+          }"
         `)
       })
     })

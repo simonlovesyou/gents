@@ -88,6 +88,7 @@ export type Context<TEntity extends Entity> = {
   hints: Array<{ name: string; level: number; value: string }>
   generators: Generators
   addImportDeclaration: (importSpecifier: ImportSpecifier) => void
+  project: Project
 }
 
 interface Hint<T extends Entity> {
@@ -174,10 +175,6 @@ export const next = (context: Context<Entity>, entity: Entity) => {
     ...context,
     hints: [...createdHints, ...incrementedHints],
   })
-  throw new TypeError(
-    // @ts-ignore
-    `Could not find generator for entity type "${entity.type}"`,
-  )
 }
 
 export const codegen = (
@@ -213,6 +210,7 @@ export const codegen = (
       },
       fileEntity: entity,
       hints: [],
+      project,
     })
 
     Object.entries(

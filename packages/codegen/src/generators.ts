@@ -938,6 +938,9 @@ export const generators: Generators = {
       if (entity.value === undefined) {
         return factory.createIdentifier("undefined")
       }
+      if (entity.value === null) {
+        return factory.createNull()
+      }
 
       throw new Error("Lol ", { cause: entity })
     },
@@ -1071,6 +1074,8 @@ export const generators: Generators = {
                       SyntaxKind.ArrayLiteralExpression,
                       SyntaxKind.StringLiteral,
                       SyntaxKind.ObjectLiteralExpression,
+                      SyntaxKind.NumericLiteral,
+                      SyntaxKind.NullKeyword,
                     ],
                   ) as Expression,
               ),
