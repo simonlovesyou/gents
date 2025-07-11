@@ -33,6 +33,7 @@
   "dependencies": {
     "object.groupby": "^1.0.3",
     "@gents/parser": "workspace:*",
+    "@gents/gents": "workspace:*",
     "ts-morph": "21.0.1"
   },
   "peerDependencies": {}

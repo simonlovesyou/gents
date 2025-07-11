@@ -3,7 +3,7 @@ import {
   FileEntity,
   ObjectPropertyEntity,
 } from "@gents/parser"
-import { generators } from "./generators"
+import { generators, entityToSchema } from "./generators"
 import { printNode, Project } from "ts-morph"
 import { describe, it, expect, vi } from "vitest"
 import { next } from "."
@@ -748,7 +748,7 @@ describe("generators", () => {
   })
 
   describe("union", () => {
-    it("should generate faker.helpers.arrayElement call with string literals", () => {
+    it("should generate selectFromUnion call with string literals", () => {
       const result = generators.union.create(
         {
           type: "union",
@@ -768,10 +768,21 @@ describe("generators", () => {
           },
         },
       )
-      expect(printNode(result)).toMatchInlineSnapshot(`"faker.helpers.arrayElement(["red", "green", "blue"] as const)"`)
+      expect(printNode(result)).toMatchInlineSnapshot(`
+        "selectFromUnion([{
+                schema: JSON.parse("{\\"type\\":\\"literal\\",\\"value\\":\\"red\\"}"),
+                generator: () => "red"
+            }, {
+                schema: JSON.parse("{\\"type\\":\\"literal\\",\\"value\\":\\"green\\"}"),
+                generator: () => "green"
+            }, {
+                schema: JSON.parse("{\\"type\\":\\"literal\\",\\"value\\":\\"blue\\"}"),
+                generator: () => "blue"
+            }], test)"
+      `)
     })
 
-    it("should generate faker.helpers.arrayElement call with mixed types", () => {
+    it("should generate selectFromUnion call with mixed types", () => {
       const result = generators.union.create(
         {
           type: "union",
@@ -794,7 +805,18 @@ describe("generators", () => {
           },
         },
       )
-      expect(printNode(result)).toMatchInlineSnapshot(`"faker.helpers.arrayElement(["text", 42, faker.datatype.boolean()] as const)"`)
+      expect(printNode(result)).toMatchInlineSnapshot(`
+        "selectFromUnion([{
+                schema: JSON.parse("{\\"type\\":\\"literal\\",\\"value\\":\\"text\\"}"),
+                generator: () => "text"
+            }, {
+                schema: JSON.parse("{\\"type\\":\\"literal\\",\\"value\\":42}"),
+                generator: () => 42
+            }, {
+                schema: JSON.parse("{\\"type\\":\\"primitive\\",\\"primitiveType\\":\\"boolean\\"}"),
+                generator: () => faker.datatype.boolean()
+            }], test)"
+      `)
     })
   })
 
@@ -912,7 +934,7 @@ describe("generators", () => {
 
         expect(printNode(result)).toMatchInlineSnapshot(`
           "{
-              function generateUser<const T extends PartialDeep<User>>(user?: T, options?: {
+              export function generateUser<const T extends PartialDeep<User>>(user?: T, options?: {
                   seed: number | number[];
               }) { if (options?.seed !== undefined) {
                   faker.seed(options.seed);
@@ -961,19 +983,19 @@ describe("generators", () => {
 
         expect(printNode(result)).toMatchInlineSnapshot(`
           "{
-              function generateOptionalUser(optionalUser: typeof _, options?: {
-                  seed: number | number[];
-              }): OptionalUser;
-              function generateOptionalUser<const T extends OptionalUser | typeof _>(generateOptionalUser?: T, options?: {
-                  seed: number | number[];
-              }): T extends undefined ? SubscriptionTier : T;
-              function generateOptionalUser<const T extends OptionalUser>(optionalUser?: T, options?: {
+              export function generateOptionalUser<const T extends PartialDeep<OptionalUser>>(optionalUser?: T, options?: {
                   seed: number | number[];
               }) { if (options?.seed !== undefined) {
                   faker.seed(options.seed);
-              } return "0" in arguments && optionalUser !== _ ? optionalUser : faker.helpers.arrayElement([{
-                      name: faker.string.alpha()
-                  }, undefined] as const); }
+              } return "0" in arguments && optionalUser !== _ ? optionalUser : selectFromUnion([{
+                      schema: JSON.parse("{\\"type\\":\\"object\\",\\"properties\\":{\\"name\\":{\\"schema\\":{\\"type\\":\\"primitive\\",\\"primitiveType\\":\\"string\\"},\\"optional\\":false}},\\"requiredProperties\\":[\\"name\\"],\\"optionalProperties\\":[]}"),
+                      generator: () => ({
+                          name: faker.string.alpha()
+                      })
+                  }, {
+                      schema: JSON.parse("{\\"type\\":\\"literal\\"}"),
+                      generator: () => undefined
+                  }], optionalUser); }
           }"
         `)
       })
@@ -1000,11 +1022,19 @@ describe("generators", () => {
 
         expect(printNode(result)).toMatchInlineSnapshot(`
           "{
-              function generateStatus<const T extends Status>(status?: T, options?: {
+              export function generateStatus<const T extends PartialDeep<Status>>(status?: T, options?: {
                   seed: number | number[];
               }) { if (options?.seed !== undefined) {
                   faker.seed(options.seed);
-              } return (status ?? faker.helpers.arrayElement(["active", "inactive"] as const)) as Status & T; }
+              } return (status ?? selectFromUnion([{
+                      schema: JSON.parse("{\\"type\\":\\"literal\\",\\"value\\":\\"active\\"}"),
+                      generator: () => "active"
+                  }, {
+                      schema: JSON.parse("{\\"type\\":\\"literal\\",\\"value\\":\\"inactive\\"}"),
+                      generator: () => "inactive"
+                  }], status)) as MergeDeep<NarrowUnionMember<Status, T>, T, {
+                  recurseIntoArrays: true;
+              }>; }
           }"
         `)
       })
@@ -1025,7 +1055,7 @@ describe("generators", () => {
 
         expect(printNode(result)).toMatchInlineSnapshot(`
           "{
-              function generateEmail<const T extends Email>(email?: T, options?: {
+              export function generateEmail<const T extends Email>(email?: T, options?: {
                   seed: number | number[];
               }) { if (options?.seed !== undefined) {
                   faker.seed(options.seed);
@@ -1071,7 +1101,7 @@ describe("generators", () => {
 
         expect(printNode(result)).toMatchInlineSnapshot(`
           "{
-              function generateProfile<const T extends PartialDeep<Profile>>(profile?: T, options?: {
+              export function generateProfile<const T extends PartialDeep<Profile>>(profile?: T, options?: {
                   seed: number | number[];
               }) { if (options?.seed !== undefined) {
                   faker.seed(options.seed);
@@ -1124,7 +1154,7 @@ describe("generators", () => {
 
         expect(printNode(result)).toMatchInlineSnapshot(`
           "{
-              function generateProfile<const T extends PartialDeep<Profile>>(profile?: T, options?: {
+              export function generateProfile<const T extends PartialDeep<Profile>>(profile?: T, options?: {
                   seed: number | number[];
               }) { if (options?.seed !== undefined) {
                   faker.seed(options.seed);
@@ -1174,7 +1204,7 @@ describe("generators", () => {
         )
         expect(printNode(result1)).toMatchInlineSnapshot(`
           "{
-              function generateUserProfile<const T extends UserProfile>(userProfile?: T, options?: {
+              export function generateUserProfile<const T extends UserProfile>(userProfile?: T, options?: {
                   seed: number | number[];
               }) { if (options?.seed !== undefined) {
                   faker.seed(options.seed);
@@ -1193,7 +1223,7 @@ describe("generators", () => {
         )
         expect(printNode(result2)).toMatchInlineSnapshot(`
           "{
-              function generateApiResponse<const T extends APIResponse>(apiResponse?: T, options?: {
+              export function generateApiResponse<const T extends APIResponse>(apiResponse?: T, options?: {
                   seed: number | number[];
               }) { if (options?.seed !== undefined) {
                   faker.seed(options.seed);
@@ -1201,6 +1231,300 @@ describe("generators", () => {
           }"
         `)
       })
+    })
+  })
+
+  describe("entityToSchema", () => {
+    // Function is imported at the top of the file
+    
+    describe("object entities", () => {
+      it("should convert object entity to ObjectSchema", () => {
+        const objectEntity = {
+          type: "object" as const,
+          properties: [
+            {
+              type: "objectProperty" as const,
+              name: "email",
+              property: { type: "string" as const },
+              optional: false
+            },
+            {
+              type: "objectProperty" as const,
+              name: "name", 
+              property: { type: "string" as const },
+              optional: true
+            }
+          ]
+        }
+
+        const result = entityToSchema(objectEntity)
+        
+        expect(result).toEqual({
+          type: 'object',
+          properties: {
+            email: {
+              schema: { type: 'primitive', primitiveType: 'string' },
+              optional: false
+            },
+            name: {
+              schema: { type: 'primitive', primitiveType: 'string' },
+              optional: true
+            }
+          },
+          requiredProperties: ['email'],
+          optionalProperties: ['name']
+        })
+      })
+    })
+
+    describe("union entities", () => {
+      it("should convert union entity to UnionSchema", () => {
+        const unionEntity = {
+          type: "union" as const,
+          values: [
+            { type: "string" as const },
+            { type: "number" as const },
+            { type: "literal" as const, value: null }
+          ]
+        }
+
+        const result = entityToSchema(unionEntity)
+        
+        expect(result).toEqual({
+          type: 'union',
+          members: [
+            { type: 'primitive', primitiveType: 'string' },
+            { type: 'primitive', primitiveType: 'number' },
+            { type: 'literal', value: null }
+          ]
+        })
+      })
+    })
+
+    describe("array entities", () => {
+      it("should convert tuple array entity to ArraySchema", () => {
+        const tupleEntity = {
+          type: "array" as const,
+          tuple: true as const,
+          readonly: false,
+          elements: [
+            { type: "string" as const },
+            { type: "number" as const }
+          ]
+        }
+
+        const result = entityToSchema(tupleEntity)
+        
+        expect(result).toEqual({
+          type: 'array',
+          tuple: true,
+          elements: [
+            { type: 'primitive', primitiveType: 'string' },
+            { type: 'primitive', primitiveType: 'number' }
+          ],
+          readonly: false
+        })
+      })
+
+      it("should convert regular array entity to ArraySchema", () => {
+        const arrayEntity = {
+          type: "array" as const,
+          tuple: false as const,
+          readonly: false,
+          elements: { type: "string" as const }
+        }
+
+        const result = entityToSchema(arrayEntity)
+        
+        expect(result).toEqual({
+          type: 'array',
+          tuple: false,
+          elements: { type: 'primitive', primitiveType: 'string' },
+          readonly: false
+        })
+      })
+    })
+
+    describe("primitive entities", () => {
+      it("should convert string entity to PrimitiveSchema", () => {
+        const result = entityToSchema({ type: "string" as const })
+        expect(result).toEqual({ type: 'primitive', primitiveType: 'string' })
+      })
+
+      it("should convert number entity to PrimitiveSchema", () => {
+        const result = entityToSchema({ type: "number" as const })
+        expect(result).toEqual({ type: 'primitive', primitiveType: 'number' })
+      })
+
+      it("should convert boolean entity to PrimitiveSchema", () => {
+        const result = entityToSchema({ type: "boolean" as const })
+        expect(result).toEqual({ type: 'primitive', primitiveType: 'boolean' })
+      })
+
+      it("should convert any entity to PrimitiveSchema", () => {
+        const result = entityToSchema({ type: "any" as const })
+        expect(result).toEqual({ type: 'primitive', primitiveType: 'any' })
+      })
+    })
+
+    describe("literal entities", () => {
+      it("should convert literal entity to LiteralSchema", () => {
+        const result = entityToSchema({ type: "literal" as const, value: "test" })
+        expect(result).toEqual({ type: 'literal', value: "test" })
+      })
+
+      it("should convert booleanLiteral entity to LiteralSchema", () => {
+        const result = entityToSchema({ type: "booleanLiteral" as const, value: true })
+        expect(result).toEqual({ type: 'literal', value: true })
+      })
+    })
+
+    describe("reference entities", () => {
+      it("should convert reference entity to ReferenceSchema", () => {
+        const result = entityToSchema({ type: "reference" as const, reference: "User" })
+        expect(result).toEqual({ type: 'reference', reference: "User" })
+      })
+
+      it("should convert alias entity to ReferenceSchema", () => {
+        const result = entityToSchema({ type: "alias" as const, alias: "UserType" })
+        expect(result).toEqual({ type: 'reference', reference: "UserType" })
+      })
+    })
+
+    describe("unsupported entities", () => {
+      it("should fallback to any primitive for unsupported types", () => {
+        const result = entityToSchema({ type: "intersection" as const })
+        expect(result).toEqual({ type: 'primitive', primitiveType: 'any' })
+      })
+    })
+  })
+
+  describe("union with intelligent selection", () => {
+    it("should generate selectFromUnion call with union members", () => {
+      const result = generators.union.create(
+        {
+          type: "union",
+          values: [
+            { type: "literal", value: "red" },
+            { type: "literal", value: "green" },
+            { type: "literal", value: "blue" },
+          ],
+        },
+        {
+          ...defaultContext,
+          next: (context, entity) => {
+            if (entity.type === "literal") {
+              return generators.literal.create(entity as any, context)
+            }
+            throw new Error("Unhandled entity type")
+          },
+        },
+      )
+      
+      const generated = printNode(result)
+      
+      // Should use selectFromUnion instead of arrayElement
+      expect(generated).toContain('selectFromUnion')
+      expect(generated).not.toContain('arrayElement')
+      
+      // Should contain union member objects with schema and generator properties
+      expect(generated).toContain('schema')
+      expect(generated).toContain('generator')
+    })
+
+    it("should generate intelligent union selection for object types", () => {
+      const result = generators.union.create(
+        {
+          type: "union",
+          values: [
+            {
+              type: "object",
+              properties: [
+                {
+                  type: "objectProperty",
+                  name: "email",
+                  property: { type: "string" },
+                  optional: false
+                }
+              ]
+            },
+            {
+              type: "object", 
+              properties: [
+                {
+                  type: "objectProperty",
+                  name: "id",
+                  property: { type: "string" },
+                  optional: false
+                },
+                {
+                  type: "objectProperty",
+                  name: "name",
+                  property: { type: "string" },
+                  optional: false
+                }
+              ]
+            }
+          ],
+        },
+        {
+          ...defaultContext,
+          next: (context, entity) => {
+            if (entity.type === "object") {
+              return generators.object.create(entity as any, context)
+            }
+            if (entity.type === "objectProperty") {
+              return generators.objectProperty.create(entity as any, context)
+            }
+            if (entity.type === "string") {
+              return generators.string.create(entity as any, context)
+            }
+            throw new Error("Unhandled entity type")
+          },
+        },
+      )
+      
+      const generated = printNode(result)
+      
+      // Should generate selectFromUnion call with object schemas
+      expect(generated).toContain('selectFromUnion')
+      expect(generated).toContain('schema')
+      expect(generated).toContain('generator')
+      expect(generated).toContain('object')
+    })
+
+    it("should pass the correct parameter to selectFromUnion", () => {
+      const mockContext = {
+        ...defaultContext,
+        parentDeclarationEntity: {
+          type: "declaration" as const,
+          name: "TestType",
+          exported: false,
+          declaration: { type: "string" as const }
+        },
+        next: (context, entity) => {
+          if (entity.type === "literal") {
+            return generators.literal.create(entity as any, context)
+          }
+          throw new Error("Unhandled entity type")
+        },
+      }
+
+      const result = generators.union.create(
+        {
+          type: "union",
+          values: [
+            { type: "literal", value: "option1" },
+            { type: "literal", value: "option2" },
+          ],
+        },
+        mockContext,
+      )
+      
+      const generated = printNode(result)
+      
+      // Should pass the camelCased parameter name
+      expect(generated).toContain('testType') // camelCase of "TestType"
     })
   })
 })
