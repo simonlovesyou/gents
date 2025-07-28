@@ -6,14 +6,13 @@ import {
   type Program,
   type Project,
   type SourceFile,
-  type Symbol,
   SymbolFlags,
+  type Symbol as SymbolType,
   SyntaxKind,
   type Type,
   type TypeAliasDeclaration,
   TypeFlags,
-  TypeFormatFlags,
-  ts
+  TypeFormatFlags
 } from 'ts-morph'
 import type { PseudoBigInt } from 'typescript'
 
@@ -29,7 +28,7 @@ const getNameFromNode = (node: Node) => {
 
 // findType and isTypeReference functions are now part of the logger package
 
-const parsePropertySymbol = (property: Symbol, program?: Program) => {
+const parsePropertySymbol = (property: SymbolType, program?: Program) => {
   const escapedName = property.getEscapedName()
   const valueDeclaration = property.getValueDeclarationOrThrow()
 
