@@ -32,6 +32,14 @@ type PropertyAccessElementLike =
   | Identifier
   | string
 
+const createNullishCoalescingExpression = (left: Expression, right: Expression) => {
+  return factory.createBinaryExpression(
+    left,
+    factory.createToken(SyntaxKind.QuestionQuestionToken),
+    right
+  )
+}
+
 const createPropertyAccessChain = (
   properties: [PropertyAccessElementLike, ...PropertyAccessElementLike[]]
 ) => {
@@ -61,9 +69,6 @@ const createPropertyAccessChain = (
     return factory.createPropertyAccessExpression(acc, property)
   }, accumulator)
 }
-
-const createNullishCoalescingExpression = (left: Expression, right: Expression) =>
-  factory.createBinaryExpression(left, factory.createToken(SyntaxKind.QuestionQuestionToken), right)
 
 const createIdentifierImport = (
   identifier: string,
@@ -407,14 +412,6 @@ export const generators: Generators = {
         undefined
       )
 
-      const exactOptionalPropertyTypes =
-        context.project.getCompilerOptions().exactOptionalPropertyTypes
-
-      const hasOptionalProperties =
-        entity.declaration.type === 'object' &&
-        entity.declaration.properties.length > 0 &&
-        entity.declaration.properties.some((property) => property.optional)
-
       const canBeUndefined =
         entity.declaration.type === 'union' &&
         entity.declaration.values.length > 0 &&
@@ -422,85 +419,571 @@ export const generators: Generators = {
           (entity) => entity.type === 'literal' && entity.value === undefined
         )
 
-      return factory.createBlock([
-        factory.createFunctionDeclaration(
-          [factory.createToken(SyntaxKind.ExportKeyword)],
-          undefined,
-          factory.createIdentifier(camelcase(generateDeclarationName(entity.name))),
-          [
-            factory.createTypeParameterDeclaration(
-              [factory.createToken(SyntaxKind.ConstKeyword)],
-              factory.createIdentifier('T'),
-              entity.declaration.type === 'object' || entity.declaration.type === 'union'
-                ? factory.createTypeReferenceNode(
-                    createIdentifierImport(
-                      'PartialDeep',
-                      'type-fest',
-                      { named: true, typeOnly: true },
-                      context
+      const overloads =
+        entity.declaration.type === 'union'
+          ? canBeUndefined
+            ? [
+                // When union supports undefined and undefined is provided
+                factory.createFunctionDeclaration(
+                  [factory.createToken(SyntaxKind.ExportKeyword)],
+                  undefined,
+                  factory.createIdentifier(camelcase(generateDeclarationName(entity.name))),
+                  [
+                    factory.createTypeParameterDeclaration(
+                      [factory.createToken(SyntaxKind.ConstKeyword)],
+                      factory.createIdentifier('T'),
+                      factory.createKeywordTypeNode(SyntaxKind.UndefinedKeyword),
+                      undefined
+                    )
+                  ],
+                  [
+                    factory.createParameterDeclaration(
+                      undefined,
+                      undefined,
+                      factory.createIdentifier(camelcase(entity.name)),
+                      undefined,
+                      factory.createTypeReferenceNode(factory.createIdentifier('T'), undefined),
+                      undefined
                     ),
-                    [
+                    optionsParameter
+                  ],
+                  factory.createKeywordTypeNode(SyntaxKind.UndefinedKeyword),
+                  undefined
+                ),
+                // When no arguments are provided
+                factory.createFunctionDeclaration(
+                  [factory.createToken(SyntaxKind.ExportKeyword)],
+                  undefined,
+                  factory.createIdentifier(camelcase(generateDeclarationName(entity.name))),
+                  undefined,
+                  [
+                    factory.createParameterDeclaration(
+                      undefined,
+                      undefined,
+                      factory.createIdentifier(camelcase(entity.name)),
+                      factory.createToken(SyntaxKind.QuestionToken),
+                      factory.createKeywordTypeNode(SyntaxKind.NeverKeyword),
+                      undefined
+                    ),
+                    optionsParameter
+                  ],
+                  factory.createTypeReferenceNode(factory.createIdentifier(entity.name), undefined),
+                  undefined
+                ),
+                // When _ is provided
+                factory.createFunctionDeclaration(
+                  [factory.createToken(SyntaxKind.ExportKeyword)],
+                  undefined,
+                  factory.createIdentifier(camelcase(generateDeclarationName(entity.name))),
+                  [
+                    factory.createTypeParameterDeclaration(
+                      [factory.createToken(SyntaxKind.ConstKeyword)],
+                      factory.createIdentifier('T'),
+                      factory.createTypeQueryNode(
+                        createIdentifierImport(
+                          '_',
+                          '@gents/gents',
+                          { named: true, typeOnly: false },
+                          context
+                        ),
+                        undefined
+                      ),
+                      undefined
+                    )
+                  ],
+                  [
+                    factory.createParameterDeclaration(
+                      undefined,
+                      undefined,
+                      factory.createIdentifier(camelcase(entity.name)),
+                      undefined,
+                      factory.createTypeReferenceNode(factory.createIdentifier('T'), undefined),
+                      undefined
+                    ),
+                    optionsParameter
+                  ],
+                  factory.createTypeReferenceNode(factory.createIdentifier(entity.name), undefined),
+                  undefined
+                ),
+                // When specific union member is provided
+                factory.createFunctionDeclaration(
+                  [factory.createToken(SyntaxKind.ExportKeyword)],
+                  undefined,
+                  factory.createIdentifier(camelcase(generateDeclarationName(entity.name))),
+                  [
+                    factory.createTypeParameterDeclaration(
+                      [factory.createToken(SyntaxKind.ConstKeyword)],
+                      factory.createIdentifier('T'),
                       factory.createTypeReferenceNode(
                         factory.createIdentifier(entity.name),
                         undefined
-                      )
-                    ]
-                  )
-                : factory.createTypeReferenceNode(factory.createIdentifier(entity.name), undefined),
-              undefined
-            )
-          ],
-          [
-            factory.createParameterDeclaration(
-              undefined,
-              undefined,
-              factory.createIdentifier(camelcase(entity.name)),
-              factory.createToken(SyntaxKind.QuestionToken),
-              factory.createTypeReferenceNode(factory.createIdentifier('T')),
-              undefined
-            ),
-            optionsParameter
-          ],
-          undefined,
-          factory.createBlock([
-            /*
-            if(options?.seed !== undefined) {
-              faker.seed(options.seed)
-            }
-          */
-            factory.createIfStatement(
-              factory.createBinaryExpression(
-                factory.createPropertyAccessChain(
-                  factory.createIdentifier('options'),
-                  factory.createToken(SyntaxKind.QuestionDotToken),
-                  factory.createIdentifier('seed')
+                      ),
+                      undefined
+                    )
+                  ],
+                  [
+                    factory.createParameterDeclaration(
+                      undefined,
+                      undefined,
+                      factory.createIdentifier(camelcase(entity.name)),
+                      undefined,
+                      factory.createTypeReferenceNode(factory.createIdentifier('T'), undefined),
+                      undefined
+                    ),
+                    optionsParameter
+                  ],
+                  factory.createTypeReferenceNode(factory.createIdentifier('T'), undefined),
+                  undefined
+                )
+              ]
+            : [
+                // When no arguments are provided
+                factory.createFunctionDeclaration(
+                  [factory.createToken(SyntaxKind.ExportKeyword)],
+                  undefined,
+                  factory.createIdentifier(camelcase(generateDeclarationName(entity.name))),
+                  undefined,
+                  [
+                    factory.createParameterDeclaration(
+                      undefined,
+                      undefined,
+                      factory.createIdentifier(camelcase(entity.name)),
+                      factory.createToken(SyntaxKind.QuestionToken),
+                      factory.createKeywordTypeNode(SyntaxKind.NeverKeyword),
+                      undefined
+                    ),
+                    optionsParameter
+                  ],
+                  factory.createTypeReferenceNode(factory.createIdentifier(entity.name), undefined),
+                  undefined
                 ),
-                factory.createToken(SyntaxKind.ExclamationEqualsEqualsToken),
-                factory.createIdentifier('undefined')
-              ),
-              factory.createBlock(
-                [
-                  factory.createExpressionStatement(
-                    factory.createCallExpression(
-                      createPropertyAccessChain([
+                // When union does not support undefined and undefined is provided
+                factory.createFunctionDeclaration(
+                  [factory.createToken(SyntaxKind.ExportKeyword)],
+                  undefined,
+                  factory.createIdentifier(camelcase(generateDeclarationName(entity.name))),
+                  [
+                    factory.createTypeParameterDeclaration(
+                      [factory.createToken(SyntaxKind.ConstKeyword)],
+                      factory.createIdentifier('T'),
+                      factory.createKeywordTypeNode(SyntaxKind.UndefinedKeyword),
+                      undefined
+                    )
+                  ],
+                  [
+                    factory.createParameterDeclaration(
+                      undefined,
+                      undefined,
+                      factory.createIdentifier(camelcase(entity.name)),
+                      factory.createToken(SyntaxKind.QuestionToken),
+                      factory.createTypeReferenceNode(factory.createIdentifier('T'), undefined),
+                      undefined
+                    ),
+                    optionsParameter
+                  ],
+                  factory.createTypeReferenceNode(factory.createIdentifier(entity.name), undefined),
+                  undefined
+                ),
+                // When specific union member is provided
+                factory.createFunctionDeclaration(
+                  [factory.createToken(SyntaxKind.ExportKeyword)],
+                  undefined,
+                  factory.createIdentifier(camelcase(generateDeclarationName(entity.name))),
+                  [
+                    factory.createTypeParameterDeclaration(
+                      [factory.createToken(SyntaxKind.ConstKeyword)],
+                      factory.createIdentifier('T'),
+                      factory.createTypeReferenceNode(
+                        factory.createIdentifier(entity.name),
+                        undefined
+                      ),
+                      undefined
+                    )
+                  ],
+                  [
+                    factory.createParameterDeclaration(
+                      undefined,
+                      undefined,
+                      factory.createIdentifier(camelcase(entity.name)),
+                      undefined,
+                      factory.createTypeReferenceNode(factory.createIdentifier('T'), undefined),
+                      undefined
+                    ),
+                    optionsParameter
+                  ],
+                  factory.createTypeReferenceNode(factory.createIdentifier('T'), undefined),
+                  undefined
+                )
+              ]
+          : canBeUndefined
+            ? [
+                factory.createFunctionDeclaration(
+                  [factory.createToken(SyntaxKind.ExportKeyword)],
+                  undefined,
+                  factory.createIdentifier(camelcase(generateDeclarationName(entity.name))),
+                  undefined,
+                  [
+                    factory.createParameterDeclaration(
+                      undefined,
+                      undefined,
+                      factory.createIdentifier(camelcase(entity.name)),
+                      undefined,
+                      factory.createTypeQueryNode(
                         createIdentifierImport(
-                          'faker',
-                          '@faker-js/faker',
-                          { named: true },
+                          '_',
+                          '@gents/gents',
+                          {
+                            named: true,
+                            typeOnly: false
+                          },
                           context
                         ),
-                        'seed'
+                        undefined
+                      ),
+                      undefined
+                    ),
+                    optionsParameter
+                  ],
+                  factory.createTypeReferenceNode(factory.createIdentifier(entity.name), undefined),
+                  undefined
+                ),
+                factory.createFunctionDeclaration(
+                  [factory.createToken(SyntaxKind.ExportKeyword)],
+                  undefined,
+                  factory.createIdentifier(camelcase(generateDeclarationName(entity.name))),
+                  [
+                    factory.createTypeParameterDeclaration(
+                      [factory.createToken(SyntaxKind.ConstKeyword)],
+                      factory.createIdentifier('T'),
+                      factory.createUnionTypeNode([
+                        factory.createTypeReferenceNode(
+                          factory.createIdentifier(entity.name),
+                          undefined
+                        ),
+                        factory.createTypeQueryNode(factory.createIdentifier('_'), undefined)
                       ]),
-                      undefined,
-                      [createPropertyAccessChain(['options', 'seed'])]
+                      undefined
                     )
+                  ],
+                  [
+                    factory.createParameterDeclaration(
+                      undefined,
+                      undefined,
+                      factory.createIdentifier(camelcase(generateDeclarationName(entity.name))),
+                      factory.createToken(SyntaxKind.QuestionToken),
+                      factory.createTypeReferenceNode(factory.createIdentifier('T'), undefined),
+                      undefined
+                    ),
+                    optionsParameter
+                  ],
+                  factory.createConditionalTypeNode(
+                    factory.createTypeReferenceNode(factory.createIdentifier('T'), undefined),
+                    factory.createKeywordTypeNode(SyntaxKind.UndefinedKeyword),
+                    factory.createTypeReferenceNode(
+                      factory.createIdentifier(entity.name),
+                      undefined
+                    ),
+                    factory.createTypeReferenceNode(factory.createIdentifier('T'), undefined)
+                  ),
+                  undefined
+                )
+              ]
+            : entity.declaration.type === 'object'
+              ? [
+                  // When no arguments are provided (user?: never)
+                  factory.createFunctionDeclaration(
+                    [factory.createToken(SyntaxKind.ExportKeyword)],
+                    undefined,
+                    factory.createIdentifier(camelcase(generateDeclarationName(entity.name))),
+                    undefined,
+                    [
+                      factory.createParameterDeclaration(
+                        undefined,
+                        undefined,
+                        factory.createIdentifier(camelcase(entity.name)),
+                        factory.createToken(SyntaxKind.QuestionToken),
+                        factory.createKeywordTypeNode(SyntaxKind.NeverKeyword),
+                        undefined
+                      ),
+                      optionsParameter
+                    ],
+                    factory.createTypeReferenceNode(
+                      factory.createIdentifier(entity.name),
+                      undefined
+                    ),
+                    undefined
+                  ),
+                  // When undefined is provided
+                  factory.createFunctionDeclaration(
+                    [factory.createToken(SyntaxKind.ExportKeyword)],
+                    undefined,
+                    factory.createIdentifier(camelcase(generateDeclarationName(entity.name))),
+                    [
+                      factory.createTypeParameterDeclaration(
+                        [factory.createToken(SyntaxKind.ConstKeyword)],
+                        factory.createIdentifier('T'),
+                        factory.createKeywordTypeNode(SyntaxKind.UndefinedKeyword),
+                        undefined
+                      )
+                    ],
+                    [
+                      factory.createParameterDeclaration(
+                        undefined,
+                        undefined,
+                        factory.createIdentifier(camelcase(entity.name)),
+                        factory.createToken(SyntaxKind.QuestionToken),
+                        factory.createTypeReferenceNode(factory.createIdentifier('T'), undefined),
+                        undefined
+                      ),
+                      optionsParameter
+                    ],
+                    factory.createTypeReferenceNode(
+                      factory.createIdentifier(entity.name),
+                      undefined
+                    ),
+                    undefined
+                  ),
+                  // When _ symbol is provided
+                  factory.createFunctionDeclaration(
+                    [factory.createToken(SyntaxKind.ExportKeyword)],
+                    undefined,
+                    factory.createIdentifier(camelcase(generateDeclarationName(entity.name))),
+                    [
+                      factory.createTypeParameterDeclaration(
+                        [factory.createToken(SyntaxKind.ConstKeyword)],
+                        factory.createIdentifier('T'),
+                        factory.createTypeQueryNode(
+                          createIdentifierImport(
+                            '_',
+                            '@gents/gents',
+                            { named: true, typeOnly: false },
+                            context
+                          ),
+                          undefined
+                        ),
+                        undefined
+                      )
+                    ],
+                    [
+                      factory.createParameterDeclaration(
+                        undefined,
+                        undefined,
+                        factory.createIdentifier(camelcase(entity.name)),
+                        undefined,
+                        factory.createTypeReferenceNode(factory.createIdentifier('T'), undefined),
+                        undefined
+                      ),
+                      optionsParameter
+                    ],
+                    factory.createTypeReferenceNode(
+                      factory.createIdentifier(entity.name),
+                      undefined
+                    ),
+                    undefined
+                  ),
+                  // When partial entity is provided
+                  factory.createFunctionDeclaration(
+                    [factory.createToken(SyntaxKind.ExportKeyword)],
+                    undefined,
+                    factory.createIdentifier(camelcase(generateDeclarationName(entity.name))),
+                    [
+                      factory.createTypeParameterDeclaration(
+                        [factory.createToken(SyntaxKind.ConstKeyword)],
+                        factory.createIdentifier('T'),
+                        factory.createTypeReferenceNode(
+                          createIdentifierImport(
+                            'PartialDeep',
+                            'type-fest',
+                            { named: true, typeOnly: true },
+                            context
+                          ),
+                          [
+                            factory.createTypeReferenceNode(
+                              factory.createIdentifier(entity.name),
+                              undefined
+                            )
+                          ]
+                        ),
+                        undefined
+                      )
+                    ],
+                    [
+                      factory.createParameterDeclaration(
+                        undefined,
+                        undefined,
+                        factory.createIdentifier(camelcase(entity.name)),
+                        undefined,
+                        factory.createTypeReferenceNode(factory.createIdentifier('T'), undefined),
+                        undefined
+                      ),
+                      optionsParameter
+                    ],
+                    factory.createTypeReferenceNode(
+                      createIdentifierImport(
+                        'MergeResult',
+                        '@gents/gents',
+                        { named: true, typeOnly: true },
+                        context
+                      ),
+                      [
+                        factory.createTypeReferenceNode(
+                          factory.createIdentifier(entity.name),
+                          undefined
+                        ),
+                        factory.createTypeReferenceNode(factory.createIdentifier('T'), undefined),
+                        factory.createTypeLiteralNode([
+                          factory.createPropertySignature(
+                            undefined,
+                            factory.createIdentifier('preferUndefinedSource'),
+                            undefined,
+                            factory.createLiteralTypeNode(factory.createFalse())
+                          )
+                        ])
+                      ]
+                    ),
+                    undefined
                   )
-                ],
-                true
+                ]
+              : undefined
+
+      // Main function implementation
+      const mainFunction = factory.createFunctionDeclaration(
+        [factory.createToken(SyntaxKind.ExportKeyword)],
+        undefined,
+        factory.createIdentifier(camelcase(generateDeclarationName(entity.name))),
+        [
+          factory.createTypeParameterDeclaration(
+            [factory.createToken(SyntaxKind.ConstKeyword)],
+            factory.createIdentifier('T'),
+            entity.declaration.type === 'object'
+              ? factory.createTypeReferenceNode(
+                  createIdentifierImport(
+                    'PartialDeep',
+                    'type-fest',
+                    { named: true, typeOnly: true },
+                    context
+                  ),
+                  [
+                    factory.createTypeReferenceNode(
+                      factory.createIdentifier(entity.name),
+                      undefined
+                    )
+                  ]
+                )
+              : entity.declaration.type === 'union'
+                ? canBeUndefined
+                  ? factory.createUnionTypeNode([
+                      factory.createTypeReferenceNode(
+                        factory.createIdentifier(entity.name),
+                        undefined
+                      ),
+                      factory.createKeywordTypeNode(SyntaxKind.UndefinedKeyword),
+                      factory.createTypeQueryNode(
+                        createIdentifierImport(
+                          '_',
+                          '@gents/gents',
+                          { named: true, typeOnly: false },
+                          context
+                        ),
+                        undefined
+                      )
+                    ])
+                  : factory.createUnionTypeNode([
+                      factory.createTypeReferenceNode(
+                        factory.createIdentifier(entity.name),
+                        undefined
+                      ),
+                      factory.createTypeQueryNode(
+                        createIdentifierImport(
+                          '_',
+                          '@gents/gents',
+                          { named: true, typeOnly: false },
+                          context
+                        ),
+                        undefined
+                      )
+                    ])
+                : factory.createTypeReferenceNode(factory.createIdentifier(entity.name), undefined),
+            undefined
+          )
+        ],
+        [
+          factory.createParameterDeclaration(
+            undefined,
+            undefined,
+            factory.createIdentifier(camelcase(entity.name)),
+            entity.declaration.type === 'union'
+              ? canBeUndefined
+                ? factory.createToken(SyntaxKind.QuestionToken)
+                : undefined
+              : factory.createToken(SyntaxKind.QuestionToken),
+            factory.createTypeReferenceNode(factory.createIdentifier('T')),
+            undefined
+          ),
+          optionsParameter
+        ],
+        undefined,
+        factory.createBlock([
+          // Seed faker if options.seed is provided
+          factory.createIfStatement(
+            factory.createBinaryExpression(
+              factory.createPropertyAccessChain(
+                factory.createIdentifier('options'),
+                factory.createToken(SyntaxKind.QuestionDotToken),
+                factory.createIdentifier('seed')
               ),
-              undefined
+              factory.createToken(SyntaxKind.ExclamationEqualsEqualsToken),
+              factory.createIdentifier('undefined')
             ),
-            canBeUndefined
+            factory.createBlock(
+              [
+                factory.createExpressionStatement(
+                  factory.createCallExpression(
+                    createPropertyAccessChain([
+                      createIdentifierImport('faker', '@faker-js/faker', { named: true }, context),
+                      'seed'
+                    ]),
+                    undefined,
+                    [createPropertyAccessChain(['options', 'seed'])]
+                  )
+                )
+              ],
+              true
+            ),
+            undefined
+          ),
+          entity.declaration.type === 'union'
+            ? factory.createReturnStatement(
+                factory.createCallExpression(
+                  createIdentifierImport('merge', '@gents/gents', { named: true }, context),
+                  undefined,
+                  [
+                    isOneOfKindOrThrow(
+                      context.next(
+                        {
+                          ...context,
+                          parentEntity: entity,
+                          parentDeclarationEntity: entity,
+                          closestIdentifer: context.closestIdentifer
+                        },
+                        entity.declaration
+                      ),
+                      [SyntaxKind.ExpressionStatement, SyntaxKind.CallExpression]
+                    ),
+                    factory.createIdentifier(camelcase(entity.name)),
+                    factory.createObjectLiteralExpression(
+                      [
+                        factory.createPropertyAssignment(
+                          factory.createIdentifier('preferUndefinedSource'),
+                          canBeUndefined ? factory.createTrue() : factory.createFalse()
+                        )
+                      ],
+                      false
+                    )
+                  ]
+                )
+              )
+            : canBeUndefined
               ? factory.createReturnStatement(
                   factory.createConditionalExpression(
                     factory.createBinaryExpression(
@@ -513,7 +996,12 @@ export const generators: Generators = {
                       factory.createBinaryExpression(
                         factory.createIdentifier(camelcase(entity.name)),
                         factory.createToken(SyntaxKind.ExclamationEqualsEqualsToken),
-                        factory.createIdentifier('_')
+                        createIdentifierImport(
+                          '_',
+                          '@gents/gents',
+                          { named: true, typeOnly: false },
+                          context
+                        )
                       )
                     ),
                     factory.createToken(SyntaxKind.QuestionToken),
@@ -538,214 +1026,46 @@ export const generators: Generators = {
                     )
                   )
                 )
-              : entity.declaration.type === 'union'
-                ? factory.createReturnStatement(
-                    factory.createAsExpression(
-                      factory.createParenthesizedExpression(
-                        factory.createBinaryExpression(
-                          factory.createIdentifier(camelcase(entity.name)),
-                          factory.createToken(SyntaxKind.QuestionQuestionToken),
-                          isOneOfKindOrThrow(
-                            context.next(
-                              {
-                                ...context,
-                                parentEntity: entity,
-                                parentDeclarationEntity: entity,
-                                closestIdentifer: context.closestIdentifer
-                              },
-                              entity.declaration
-                            ),
-                            [SyntaxKind.ExpressionStatement, SyntaxKind.CallExpression]
-                          )
-                        )
-                      ),
-                      factory.createTypeReferenceNode(
-                        createIdentifierImport(
-                          'MergeDeep',
-                          'type-fest',
-                          { named: true, typeOnly: true },
-                          context
-                        ),
-                        [
-                          factory.createTypeReferenceNode(
-                            createIdentifierImport(
-                              'NarrowUnionMember',
-                              '@gents/gents',
-                              { named: true, typeOnly: true },
-                              context
-                            ),
-                            [
-                              factory.createTypeReferenceNode(
-                                factory.createIdentifier(entity.name),
-                                undefined
-                              ),
-                              factory.createTypeReferenceNode(
-                                factory.createIdentifier('T'),
-                                undefined
-                              )
-                            ]
-                          ),
-                          factory.createTypeReferenceNode(factory.createIdentifier('T'), undefined),
-                          factory.createTypeLiteralNode([
-                            factory.createPropertySignature(
-                              undefined,
-                              factory.createIdentifier('recurseIntoArrays'),
-                              undefined,
-                              factory.createLiteralTypeNode(factory.createTrue())
-                            )
-                          ])
-                        ]
-                      )
-                    )
-                  )
-                : factory.createReturnStatement(
-                    factory.createAsExpression(
-                      factory.createCallExpression(
-                        createIdentifierImport('merge', 'deepmerge', {}, context),
-                        undefined,
-                        [
-                          entity.declaration.type === 'object'
-                            ? factory.createSatisfiesExpression(
-                                factory.createAsExpression(
-                                  exactOptionalPropertyTypes && hasOptionalProperties
-                                    ? factory.createCallExpression(
-                                        createIdentifierImport('omit', 'lodash.omit', {}, context),
-                                        [],
-                                        [
-                                          factory.createCallExpression(
-                                            createPropertyAccessChain([
-                                              'faker',
-                                              'helpers',
-                                              'arrayElements'
-                                            ]),
-                                            [],
-                                            [
-                                              factory.createArrayLiteralExpression(
-                                                entity.declaration.properties
-                                                  .filter((property) => property.optional)
-                                                  .map((property) =>
-                                                    factory.createStringLiteral(property.name)
-                                                  )
-                                              ),
-                                              factory.createObjectLiteralExpression([
-                                                factory.createPropertyAssignment(
-                                                  'min',
-                                                  factory.createNumericLiteral(0)
-                                                ),
-                                                factory.createPropertyAssignment(
-                                                  'max',
-                                                  factory.createNumericLiteral(
-                                                    entity.declaration.properties.filter(
-                                                      (property) => property.optional
-                                                    ).length
-                                                  )
-                                                )
-                                              ])
-                                            ]
-                                          ),
-                                          isOneOfKindOrThrow(
-                                            context.next(
-                                              {
-                                                ...context,
-                                                parentEntity: entity,
-                                                parentDeclarationEntity: entity,
-                                                closestIdentifer: entity
-                                              },
-                                              entity.declaration
-                                            ),
-                                            [
-                                              SyntaxKind.ExpressionStatement,
-                                              SyntaxKind.ObjectLiteralExpression
-                                            ]
-                                          )
-                                        ]
-                                      )
-                                    : isOneOfKindOrThrow(
-                                        context.next(
-                                          {
-                                            ...context,
-                                            parentEntity: entity,
-                                            parentDeclarationEntity: entity,
-                                            closestIdentifer: entity
-                                          },
-                                          entity.declaration
-                                        ),
-                                        [
-                                          SyntaxKind.ExpressionStatement,
-                                          SyntaxKind.ObjectLiteralExpression
-                                        ]
-                                      ),
-                                  factory.createTypeReferenceNode(
-                                    factory.createIdentifier('const'),
-                                    undefined
-                                  )
-                                ),
-                                factory.createTypeReferenceNode(
-                                  createIdentifierImport(
-                                    'ReadonlyDeep',
-                                    'type-fest',
-                                    { named: true, typeOnly: true },
-                                    context
-                                  ),
-                                  [
-                                    factory.createTypeReferenceNode(
-                                      factory.createIdentifier(entity.name),
-                                      undefined
-                                    )
-                                  ]
-                                )
-                              )
-                            : isOneOfKindOrThrow(
-                                context.next(
-                                  {
-                                    ...context,
-                                    parentEntity: entity,
-                                    parentDeclarationEntity: entity,
-                                    closestIdentifer: entity
-                                  },
-                                  entity.declaration
-                                ),
-                                [
-                                  SyntaxKind.ExpressionStatement,
-                                  SyntaxKind.CallExpression,
-                                  SyntaxKind.ObjectLiteralExpression,
-                                  SyntaxKind.StringLiteral
-                                ]
-                              ),
-                          createNullishCoalescingExpression(
-                            factory.createIdentifier(camelcase(entity.name)),
-                            factory.createObjectLiteralExpression()
-                          )
-                        ]
-                      ),
-                      factory.createTypeReferenceNode(
-                        createIdentifierImport(
-                          'SimplifyDeep',
-                          'type-fest',
+              : factory.createReturnStatement(
+                  factory.createCallExpression(
+                    createIdentifierImport('merge', '@gents/gents', { named: true }, context),
+                    undefined,
+                    [
+                      isOneOfKindOrThrow(
+                        context.next(
                           {
-                            typeOnly: true,
-                            named: true
+                            ...context,
+                            parentEntity: entity,
+                            parentDeclarationEntity: entity,
+                            closestIdentifer: entity
                           },
-                          context
+                          entity.declaration
                         ),
                         [
-                          factory.createIntersectionTypeNode([
-                            factory.createTypeReferenceNode(
-                              factory.createIdentifier(entity.name),
-                              undefined
-                            ),
-                            factory.createTypeReferenceNode(
-                              factory.createIdentifier('T'),
-                              undefined
-                            )
-                          ])
+                          SyntaxKind.ExpressionStatement,
+                          SyntaxKind.CallExpression,
+                          SyntaxKind.ObjectLiteralExpression,
+                          SyntaxKind.StringLiteral
                         ]
+                      ),
+
+                      factory.createIdentifier(camelcase(entity.name)),
+                      factory.createObjectLiteralExpression(
+                        [
+                          factory.createPropertyAssignment(
+                            factory.createIdentifier('preferUndefinedSource'),
+                            factory.createFalse()
+                          )
+                        ],
+                        false
                       )
-                    )
+                    ]
                   )
-          ])
-        )
-      ])
+                )
+        ])
+      )
+
+      return factory.createBlock([...(overloads ?? []), mainFunction])
     },
     hints: identifierHints
   },
@@ -951,6 +1271,174 @@ export const generators: Generators = {
         ])
       ])
     }
+  }
+}
+
+// Convert RuntimeSchema to TypeScript AST nodes
+function runtimeSchemaToASTNode(schema: RuntimeSchema): Expression {
+  switch (schema.type) {
+    case 'object':
+      return factory.createObjectLiteralExpression([
+        factory.createPropertyAssignment(
+          factory.createIdentifier('type'),
+          factory.createStringLiteral('object')
+        ),
+        factory.createPropertyAssignment(
+          factory.createIdentifier('properties'),
+          factory.createObjectLiteralExpression(
+            Object.entries(schema.properties).map(([key, propInfo]) =>
+              factory.createPropertyAssignment(
+                factory.createStringLiteral(key),
+                factory.createObjectLiteralExpression([
+                  factory.createPropertyAssignment(
+                    factory.createIdentifier('schema'),
+                    runtimeSchemaToASTNode(propInfo.schema)
+                  ),
+                  factory.createPropertyAssignment(
+                    factory.createIdentifier('optional'),
+                    propInfo.optional ? factory.createTrue() : factory.createFalse()
+                  )
+                ])
+              )
+            )
+          )
+        ),
+        factory.createPropertyAssignment(
+          factory.createIdentifier('requiredProperties'),
+          factory.createArrayLiteralExpression(
+            schema.requiredProperties.map((prop) => factory.createStringLiteral(prop))
+          )
+        ),
+        factory.createPropertyAssignment(
+          factory.createIdentifier('optionalProperties'),
+          factory.createArrayLiteralExpression(
+            schema.optionalProperties.map((prop) => factory.createStringLiteral(prop))
+          )
+        )
+      ])
+
+    case 'array':
+      if (schema.tuple) {
+        return factory.createObjectLiteralExpression([
+          factory.createPropertyAssignment(
+            factory.createIdentifier('type'),
+            factory.createStringLiteral('array')
+          ),
+          factory.createPropertyAssignment(factory.createIdentifier('tuple'), factory.createTrue()),
+          factory.createPropertyAssignment(
+            factory.createIdentifier('elements'),
+            factory.createArrayLiteralExpression(
+              (schema.elements as RuntimeSchema[]).map((elem) => runtimeSchemaToASTNode(elem))
+            )
+          ),
+          ...(schema.readonly
+            ? [
+                factory.createPropertyAssignment(
+                  factory.createIdentifier('readonly'),
+                  factory.createTrue()
+                )
+              ]
+            : [])
+        ])
+      } else {
+        return factory.createObjectLiteralExpression([
+          factory.createPropertyAssignment(
+            factory.createIdentifier('type'),
+            factory.createStringLiteral('array')
+          ),
+          factory.createPropertyAssignment(
+            factory.createIdentifier('tuple'),
+            factory.createFalse()
+          ),
+          factory.createPropertyAssignment(
+            factory.createIdentifier('elements'),
+            runtimeSchemaToASTNode(schema.elements as RuntimeSchema)
+          ),
+          ...(schema.readonly
+            ? [
+                factory.createPropertyAssignment(
+                  factory.createIdentifier('readonly'),
+                  factory.createTrue()
+                )
+              ]
+            : [])
+        ])
+      }
+
+    case 'union':
+      return factory.createObjectLiteralExpression([
+        factory.createPropertyAssignment(
+          factory.createIdentifier('type'),
+          factory.createStringLiteral('union')
+        ),
+        factory.createPropertyAssignment(
+          factory.createIdentifier('members'),
+          factory.createArrayLiteralExpression(
+            schema.members.map((member) => runtimeSchemaToASTNode(member))
+          )
+        )
+      ])
+
+    case 'literal':
+      return factory.createObjectLiteralExpression([
+        factory.createPropertyAssignment(
+          factory.createIdentifier('type'),
+          factory.createStringLiteral('literal')
+        ),
+        factory.createPropertyAssignment(
+          factory.createIdentifier('value'),
+          schema.value === null
+            ? factory.createNull()
+            : schema.value === undefined
+              ? factory.createIdentifier('undefined')
+              : typeof schema.value === 'string'
+                ? factory.createStringLiteral(schema.value)
+                : typeof schema.value === 'number'
+                  ? factory.createNumericLiteral(schema.value)
+                  : typeof schema.value === 'boolean'
+                    ? schema.value
+                      ? factory.createTrue()
+                      : factory.createFalse()
+                    : factory.createStringLiteral(String(schema.value))
+        )
+      ])
+
+    case 'primitive':
+      return factory.createObjectLiteralExpression([
+        factory.createPropertyAssignment(
+          factory.createIdentifier('type'),
+          factory.createStringLiteral('primitive')
+        ),
+        factory.createPropertyAssignment(
+          factory.createIdentifier('primitiveType'),
+          factory.createStringLiteral(schema.primitiveType)
+        )
+      ])
+
+    case 'reference':
+      return factory.createObjectLiteralExpression([
+        factory.createPropertyAssignment(
+          factory.createIdentifier('type'),
+          factory.createStringLiteral('reference')
+        ),
+        factory.createPropertyAssignment(
+          factory.createIdentifier('reference'),
+          factory.createStringLiteral(schema.reference)
+        )
+      ])
+
+    default:
+      // Fallback to any primitive
+      return factory.createObjectLiteralExpression([
+        factory.createPropertyAssignment(
+          factory.createIdentifier('type'),
+          factory.createStringLiteral('primitive')
+        ),
+        factory.createPropertyAssignment(
+          factory.createIdentifier('primitiveType'),
+          factory.createStringLiteral('any')
+        )
+      ])
   }
 }
 
