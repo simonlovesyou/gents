@@ -1,4 +1,5 @@
 import deepMerge_, { type Options as DeepMergeOptions } from 'deepmerge'
+import seedrandom from 'seedrandom'
 import type { MergeDeep } from 'type-fest'
 
 export const _ = Symbol('_')
@@ -528,6 +529,7 @@ export function selectFromUnion<T, U>(
   options: {
     fallbackToRandom?: boolean
     minCompatibilityScore?: number
+    seed?: number
   } = {}
 ): NarrowUnionMember<T, U> {
   const opts = {
@@ -536,12 +538,15 @@ export function selectFromUnion<T, U>(
     ...options
   }
 
+  // Create random number generator (seeded or unseeded)
+  const random = opts.seed !== undefined ? seedrandom(opts.seed.toString()) : Math.random
+
   if (!providedData) {
     // No data provided, select randomly with equal weights
     if (members.length === 0) {
       throw new Error('No union members provided')
     }
-    const randomIndex = Math.floor(Math.random() * members.length)
+    const randomIndex = Math.floor(random() * members.length)
     const selectedMember = members[randomIndex]
     if (!selectedMember) {
       throw new Error('Failed to select union member')
@@ -566,7 +571,7 @@ export function selectFromUnion<T, U>(
       if (members.length === 0) {
         throw new Error('No union members provided')
       }
-      const randomIndex = Math.floor(Math.random() * members.length)
+      const randomIndex = Math.floor(random() * members.length)
       const selectedMember = members[randomIndex]
       if (!selectedMember) {
         throw new Error('Failed to select union member')
@@ -585,7 +590,7 @@ export function selectFromUnion<T, U>(
     if (compatibleMembers.length === 0) {
       throw new Error('No compatible members available')
     }
-    const randomIndex = Math.floor(Math.random() * compatibleMembers.length)
+    const randomIndex = Math.floor(random() * compatibleMembers.length)
     const selectedMember = compatibleMembers[randomIndex]
     if (!selectedMember) {
       throw new Error('Failed to select compatible member')
@@ -594,7 +599,7 @@ export function selectFromUnion<T, U>(
   }
 
   // Weighted random selection
-  const randomValue = Math.random() * totalScore
+  const randomValue = random() * totalScore
   let currentSum = 0
 
   for (const { member, result } of compatibleMembers) {
@@ -626,7 +631,6 @@ export function calculateUnionMemberCompatibility(
     ...options
   }
 
-  // Handle null/undefined data
   if (data === null || data === undefined) {
     if (schema.type === 'literal' && (schema.value === null || schema.value === undefined)) {
       return { compatible: true, score: 100 }

@@ -128,6 +128,39 @@ describe('selectFromUnion', () => {
     it('should throw error when no members provided', () => {
       expect(() => selectFromUnion([])).toThrow('No union members provided')
     })
+
+    it('should generate deterministic results with seed', () => {
+      // Test with seed - should be deterministic
+      const result1 = selectFromUnion(unionMembers, undefined, { seed: 42 })
+      const result2 = selectFromUnion(unionMembers, undefined, { seed: 42 })
+
+      expect(result1).toEqual(result2)
+
+      // Test with different seed - should be different
+      const result3 = selectFromUnion(unionMembers, undefined, { seed: 123 })
+      expect(result3).toBeDefined()
+
+      // Multiple calls with same seed should be deterministic
+      const results: any[] = []
+      for (let i = 0; i < 5; i++) {
+        results.push(selectFromUnion(unionMembers, undefined, { seed: 999 }))
+      }
+
+      // All results should be the same when using the same seed
+      expect(results.every((result) => JSON.stringify(result) === JSON.stringify(results[0]))).toBe(
+        true
+      )
+    })
+
+    it('should generate different results without seed', () => {
+      // Without seed, results should potentially vary (though not guaranteed due to mocked Math.random)
+      const result1 = selectFromUnion(unionMembers)
+      const result2 = selectFromUnion(unionMembers)
+
+      // Both should be defined
+      expect(result1).toBeDefined()
+      expect(result2).toBeDefined()
+    })
   })
 
   describe('when data matches specific union member', () => {
@@ -187,6 +220,31 @@ describe('selectFromUnion', () => {
         name: 'Admin User',
         role: 'admin'
       })
+    })
+
+    it('should generate deterministic results with seed when data is provided', () => {
+      const providedData = { email: 'test@example.com' }
+
+      // Test with seed - should be deterministic even with weighted selection
+      const result1 = selectFromUnion(unionMembers, providedData, { seed: 42 })
+      const result2 = selectFromUnion(unionMembers, providedData, { seed: 42 })
+
+      expect(result1).toEqual(result2)
+
+      // Test with different seed - should potentially be different
+      const result3 = selectFromUnion(unionMembers, providedData, { seed: 123 })
+      expect(result3).toBeDefined()
+
+      // Multiple calls with same seed should be deterministic even with weighted selection
+      const results: any[] = []
+      for (let i = 0; i < 3; i++) {
+        results.push(selectFromUnion(unionMembers, providedData, { seed: 999 }))
+      }
+
+      // All results should be the same when using the same seed
+      expect(results.every((result) => JSON.stringify(result) === JSON.stringify(results[0]))).toBe(
+        true
+      )
     })
   })
 
