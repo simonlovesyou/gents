@@ -27,6 +27,7 @@
     "@gents/parser": "workspace:*",
     "@total-typescript/shoehorn": "^0.1.2",
     "@types/jest": "^29.5.12",
+    "@types/lodash.omit": "^4.5.9",
     "@types/node": "^20.14.8",
     "@types/object.groupby": "^1.0.4",
     "object.groupby": "^1.0.3",
@@ -34,11 +35,14 @@
     "ts-jest": "^29.1.5",
     "ts-morph": "21.0.1",
     "tsup": "8.0.2",
+    "type-fest": "^4.41.0",
     "typescript": "5.3.3",
     "vitest": "^2.0.3"
   },
   "peerDependencies": {},
   "dependencies": {
-    "prettier": "^3.3.3"
+    "prettier": "^3.3.3",
+    "deepmerge": "^4.3.1",
+    "lodash.omit": "^4.5.0"
   }
 }
