@@ -1,63 +1,61 @@
+import path from 'node:path'
 import type {
-  parse,
-  NumberEntity,
-  StringEntity,
-  Entity,
-  BooleanEntity,
-  ObjectEntity,
+  AliasEntity,
   AnonymousEntity,
   AnyEntity,
-  BooleanLiteralEntity,
-  EnumLiteralEntity,
-  NeverEntity,
-  LiteralEntity,
-  UnionEntity,
-  EnumEntity,
-  UnknownEntity,
-  UtilityEntity,
-  IntersectionEntity,
-  ObjectPropertyEntity,
-  DeclarationEntity,
-  AliasEntity,
   ArrayEntity,
-  ReferenceEntity,
+  BooleanEntity,
+  BooleanLiteralEntity,
+  DeclarationEntity,
+  Entity,
+  EnumEntity,
+  EnumLiteralEntity,
   FileEntity,
-} from "@gents/parser"
-import { printNode, Project, ts } from "ts-morph"
-import { generators } from "./generators.ts"
-import path from "node:path"
-import groupBy from "object.groupby"
+  IntersectionEntity,
+  LiteralEntity,
+  NeverEntity,
+  NumberEntity,
+  ObjectEntity,
+  ObjectPropertyEntity,
+  parse,
+  ReferenceEntity,
+  StringEntity,
+  UnionEntity,
+  UnknownEntity,
+  UtilityEntity
+} from '@gents/parser'
+import groupBy from 'object.groupby'
+import { Project, printNode, ts } from 'ts-morph'
+import { generators } from './generators.ts'
 
 type Entities = ReturnType<typeof parse>
 
 function isPath(importClause: string) {
   return (
-    importClause.startsWith("./") ||
-    importClause.startsWith("../") ||
-    importClause.startsWith("/")
+    importClause.startsWith('./') || importClause.startsWith('../') || importClause.startsWith('/')
   )
 }
 
 function maybeResolveImportPath(
   fileA: string,
   fileB: string,
-  options?: { allowImportingTs?: boolean },
+  options?: { allowImportingTs?: boolean }
 ) {
   if (isPath(fileB)) {
     // Determine the relative path from file B to file A
     let relativePath = path.relative(path.dirname(fileB), fileA)
 
     // Normalize the path to ensure it is correct
-    relativePath = relativePath.replace(/\\/g, "/") // Normalize Windows paths to Unix-style
-    if (!relativePath.startsWith(".")) {
-      relativePath = "./" + relativePath // Ensure it starts with './' for relative paths
+    relativePath = relativePath.replace(/\\/g, '/') // Normalize Windows paths to Unix-style
+    if (!relativePath.startsWith('.')) {
+      relativePath = './' + relativePath // Ensure it starts with './' for relative paths
     }
 
     if (options?.allowImportingTs) {
       return relativePath
     }
 
-    return relativePath.replace(/\.ts$/, "")
+    return relativePath.replace(/\.ts$/, '')
   }
   return fileB
 }
@@ -81,10 +79,7 @@ export type Context<TEntity extends Entity> = {
     path: string
     typeDeclarations: DeclarationEntity[]
   }
-  next: (
-    context: Context<TEntity>,
-    entity: Entity,
-  ) => ReturnType<CreateEntity<TEntity>>
+  next: (context: Context<TEntity>, entity: Entity) => ReturnType<CreateEntity<TEntity>>
   hints: Array<{ name: string; level: number; value: string }>
   generators: Generators
   addImportDeclaration: (importSpecifier: ImportSpecifier) => void
@@ -96,10 +91,7 @@ interface Hint<T extends Entity> {
   create: (entity: T, context: Context<T>) => string | undefined
 }
 
-type CreateEntity<T extends Entity> = (
-  entity: T,
-  context: Context<T>,
-) => ts.Node
+type CreateEntity<T extends Entity> = (entity: T, context: Context<T>) => ts.Node
 
 interface Generator<T extends Entity> {
   create: CreateEntity<T>
@@ -138,52 +130,42 @@ type Options = {
   project?: Project
 }
 
-const declarationNameGenerator = (name: string) =>
-  `${name.charAt(0).toLowerCase()}${name.slice(1)}`
+const declarationNameGenerator = (name: string) => `${name.charAt(0).toLowerCase()}${name.slice(1)}`
 
 export const next = (context: Context<Entity>, entity: Entity) => {
   const incrementedHints = context.hints.map((hint) => ({
     ...hint,
-    level:
-      hint.level + (entity.type === "array" || entity.type === "union" ? 0 : 1),
+    level: hint.level + (entity.type === 'array' || entity.type === 'union' ? 0 : 1)
   }))
 
   const createdHints =
-    generators[entity.type].hints?.reduce(
-      (accumulatingHints: typeof incrementedHints, hint) => {
-        const result = hint.create(entity as any, {
-          ...context,
-          hints: [...incrementedHints, ...accumulatingHints],
-        })
+    generators[entity.type].hints?.reduce((accumulatingHints: typeof incrementedHints, hint) => {
+      const result = hint.create(entity as any, {
+        ...context,
+        hints: [...incrementedHints, ...accumulatingHints]
+      })
 
-        if (result !== undefined) {
-          return [
-            ...accumulatingHints,
-            {
-              name: hint.name,
-              level: 0,
-              value: result,
-            },
-          ]
-        }
-        return accumulatingHints
-      },
-      [],
-    ) ?? []
+      if (result !== undefined) {
+        return [
+          ...accumulatingHints,
+          {
+            name: hint.name,
+            level: 0,
+            value: result
+          }
+        ]
+      }
+      return accumulatingHints
+    }, []) ?? []
 
   return generators[entity.type].create(entity as any, {
     ...context,
-    hints: [...createdHints, ...incrementedHints],
+    hints: [...createdHints, ...incrementedHints]
   })
 }
 
-export const codegen = (
-  entities: Entities,
-  generators: Generators,
-  options: Options,
-) => {
-  const fileNameGenerator =
-    options.fileNameGenerator ?? ((name: string) => "gen-" + name)
+export const codegen = (entities: Entities, generators: Generators, options: Options) => {
+  const fileNameGenerator = options.fileNameGenerator ?? ((name: string) => 'gen-' + name)
 
   const project = options?.project ?? new Project()
 
@@ -191,8 +173,8 @@ export const codegen = (
     let imports: ImportSpecifier[] = []
     const sourceFile = project.createSourceFile(
       path.join(options.outputFolder, fileNameGenerator(entity.name)),
-      "",
-      { overwrite: true },
+      '',
+      { overwrite: true }
     )
 
     const generatedSourceFile = generators.file.create(entity, {
@@ -210,43 +192,37 @@ export const codegen = (
       },
       fileEntity: entity,
       hints: [],
-      project,
+      project
     })
 
-    Object.entries(
-      groupBy(imports, (importSpecifier) => importSpecifier.specifier),
-    ).forEach(([specifier, importGroup]) => {
-      const namedFlatImports = importGroup
-        .map((import_) => import_.named)
-        .flat(1)
-        .filter((namedImport): namedImport is NonNullable<typeof namedImport> =>
-          Boolean(namedImport),
-        )
+    Object.entries(groupBy(imports, (importSpecifier) => importSpecifier.specifier)).forEach(
+      ([specifier, importGroup]) => {
+        const namedFlatImports = importGroup
+          .map((import_) => import_.named)
+          .flat(1)
+          .filter((namedImport): namedImport is NonNullable<typeof namedImport> =>
+            Boolean(namedImport)
+          )
 
-      const consolidateTypeImports = options?.consolidateTypeImports ?? true
+        const consolidateTypeImports = options?.consolidateTypeImports ?? true
 
-      const allNamedImportsAreTypeOnly =
-        namedFlatImports.length > 0 &&
-        namedFlatImports.every((namedImport) => namedImport.typeOnly)
+        const allNamedImportsAreTypeOnly =
+          namedFlatImports.length > 0 &&
+          namedFlatImports.every((namedImport) => namedImport.typeOnly)
 
-      const rootImportIsTypeOnly =
-        allNamedImportsAreTypeOnly && consolidateTypeImports
+        const rootImportIsTypeOnly = allNamedImportsAreTypeOnly && consolidateTypeImports
 
-      sourceFile.addImportDeclaration({
-        moduleSpecifier: maybeResolveImportPath(
-          sourceFile.getFilePath(),
-          specifier,
-        ),
-        defaultImport: importGroup.find(
-          (importSpecifier) => importSpecifier.clause,
-        )?.clause,
-        isTypeOnly: rootImportIsTypeOnly,
-        namedImports: namedFlatImports.map((import_) => ({
-          ...import_,
-          isTypeOnly: !rootImportIsTypeOnly && import_.typeOnly,
-        })),
-      })
-    })
+        sourceFile.addImportDeclaration({
+          moduleSpecifier: maybeResolveImportPath(sourceFile.getFilePath(), specifier),
+          defaultImport: importGroup.find((importSpecifier) => importSpecifier.clause)?.clause,
+          isTypeOnly: rootImportIsTypeOnly,
+          namedImports: namedFlatImports.map((import_) => ({
+            ...import_,
+            isTypeOnly: !rootImportIsTypeOnly && import_.typeOnly
+          }))
+        })
+      }
+    )
     imports = []
 
     sourceFile.addStatements(printNode(generatedSourceFile))

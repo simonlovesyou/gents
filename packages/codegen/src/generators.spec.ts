@@ -1,61 +1,54 @@
-import {
-  DeclarationEntity,
-  FileEntity,
-  ObjectPropertyEntity,
-} from "@gents/parser"
-import { generators, entityToSchema } from "./generators"
-import { printNode, Project } from "ts-morph"
-import { describe, it, expect, vi } from "vitest"
-import { next } from "."
+import { type DeclarationEntity, type FileEntity, ObjectPropertyEntity } from '@gents/parser'
+import { Project, printNode } from 'ts-morph'
+import { describe, expect, it, vi } from 'vitest'
+import { next } from '.'
+import { entityToSchema, generators } from './generators'
 
-describe("generators", () => {
+describe('generators', () => {
   const defaultContext = {
     next: next,
     parentEntity: {
-      type: "file" as const,
-      name: "foo",
-      path: "./foo.ts",
-      typeDeclarations: [],
+      type: 'file' as const,
+      name: 'foo',
+      path: './foo.ts',
+      typeDeclarations: []
     },
     parentDeclarationEntity: {
-      type: "declaration",
-      name: "Test",
+      type: 'declaration',
+      name: 'Test',
       exported: false,
       declaration: {
-        type: "string",
-      },
+        type: 'string'
+      }
     } satisfies DeclarationEntity,
     generators: {} as unknown as typeof generators,
     fileEntity: undefined as unknown as FileEntity,
     hints: [],
     addImportDeclaration: () => {},
-    project: new Project(),
+    project: new Project()
   }
-  describe("string", () => {
-    it("should by default create `faker.string.alpha()` call expression", () => {
-      const result = generators.string.create(
-        { type: "string" },
-        defaultContext,
-      )
+  describe('string', () => {
+    it('should by default create `faker.string.alpha()` call expression', () => {
+      const result = generators.string.create({ type: 'string' }, defaultContext)
 
       expect(printNode(result)).toMatchInlineSnapshot(`"faker.string.alpha()"`)
     })
 
-    describe("hints", () => {
-      describe("objectProperty", () => {
+    describe('hints', () => {
+      describe('objectProperty', () => {
         it('should generate the correct hints for object property "merchantName"', () => {
           expect(
             generators.objectProperty.hints?.map((hint) =>
               hint.create(
                 {
-                  type: "objectProperty" as const,
-                  name: "merchantName",
-                  property: { type: "string" },
-                  optional: true,
+                  type: 'objectProperty' as const,
+                  name: 'merchantName',
+                  property: { type: 'string' },
+                  optional: true
                 },
-                defaultContext,
-              ),
-            ),
+                defaultContext
+              )
+            )
           ).toMatchInlineSnapshot(`
             [
               "company",
@@ -74,14 +67,14 @@ describe("generators", () => {
             generators.objectProperty.hints?.map((hint) =>
               hint.create(
                 {
-                  type: "objectProperty" as const,
-                  name: "currencyCode",
-                  property: { type: "string" },
-                  optional: true,
+                  type: 'objectProperty' as const,
+                  name: 'currencyCode',
+                  property: { type: 'string' },
+                  optional: true
                 },
-                defaultContext,
-              ),
-            ),
+                defaultContext
+              )
+            )
           ).toMatchInlineSnapshot(`
             [
               undefined,
@@ -100,17 +93,17 @@ describe("generators", () => {
             generators.objectProperty.hints?.map((hint) =>
               hint.create(
                 {
-                  type: "objectProperty" as const,
-                  name: "code",
-                  property: { type: "string" },
-                  optional: true,
+                  type: 'objectProperty' as const,
+                  name: 'code',
+                  property: { type: 'string' },
+                  optional: true
                 },
                 {
                   ...defaultContext,
-                  hints: [{ name: "currency", level: 1, value: "currency" }],
-                },
-              ),
-            ),
+                  hints: [{ name: 'currency', level: 1, value: 'currency' }]
+                }
+              )
+            )
           ).toMatchInlineSnapshot(`
             [
               undefined,
@@ -129,17 +122,17 @@ describe("generators", () => {
             generators.objectProperty.hints?.map((hint) =>
               hint.create(
                 {
-                  type: "objectProperty" as const,
-                  name: "merchantName",
-                  property: { type: "string" },
-                  optional: true,
+                  type: 'objectProperty' as const,
+                  name: 'merchantName',
+                  property: { type: 'string' },
+                  optional: true
                 },
                 {
                   ...defaultContext,
-                  hints: [{ name: "company", level: 1, value: "company" }],
-                },
-              ),
-            ),
+                  hints: [{ name: 'company', level: 1, value: 'company' }]
+                }
+              )
+            )
           ).toMatchInlineSnapshot(`
             [
               "company",
@@ -158,14 +151,14 @@ describe("generators", () => {
             generators.objectProperty.hints?.map((hint) =>
               hint.create(
                 {
-                  type: "objectProperty" as const,
-                  name: "url",
-                  property: { type: "string" },
-                  optional: true,
+                  type: 'objectProperty' as const,
+                  name: 'url',
+                  property: { type: 'string' },
+                  optional: true
                 },
-                defaultContext,
-              ),
-            ),
+                defaultContext
+              )
+            )
           ).toMatchInlineSnapshot(`
             [
               undefined,
@@ -180,209 +173,195 @@ describe("generators", () => {
           `)
         })
       })
-      describe("name", () => {
-        const hintValues = ["firstName", "fullName", "middleName", "name"]
-        describe.each(hintValues)("hint value: %s", (hintValue) => {
-          it("should use the correct faker module & method to generate a name", () => {
+      describe('name', () => {
+        const hintValues = ['firstName', 'fullName', 'middleName', 'name']
+        describe.each(hintValues)('hint value: %s', (hintValue) => {
+          it('should use the correct faker module & method to generate a name', () => {
             const result = generators.string.create(
-              { type: "string" },
+              { type: 'string' },
               {
                 next: (() => {}) as any,
                 parentEntity: {
-                  type: "file",
-                  name: "foo",
-                  path: "./foo.ts",
-                  typeDeclarations: [],
+                  type: 'file',
+                  name: 'foo',
+                  path: './foo.ts',
+                  typeDeclarations: []
                 },
                 generators: {} as unknown as typeof generators,
                 fileEntity: undefined as unknown as FileEntity,
-                hints: [{ name: "name", value: hintValue, level: 1 }],
+                hints: [{ name: 'name', value: hintValue, level: 1 }],
                 addImportDeclaration: () => {},
-                project: new Project(),
-              },
+                project: new Project()
+              }
             )
 
             expect(printNode(result)).toBe(`faker.person.${hintValue}()`)
           })
         })
       })
-      describe("company & name", () => {
-        it("should use the correct company faker module & method to generate a name", () => {
+      describe('company & name', () => {
+        it('should use the correct company faker module & method to generate a name', () => {
           const result = generators.string.create(
-            { type: "string" },
+            { type: 'string' },
             {
               next: (() => {}) as any,
               parentEntity: {
-                type: "file",
-                name: "foo",
-                path: "./foo.ts",
-                typeDeclarations: [],
+                type: 'file',
+                name: 'foo',
+                path: './foo.ts',
+                typeDeclarations: []
               },
               generators: {} as unknown as typeof generators,
               fileEntity: undefined as unknown as FileEntity,
               hints: [
-                { name: "name", value: "name", level: 1 },
-                { name: "company", value: "company", level: 1 },
+                { name: 'name', value: 'name', level: 1 },
+                { name: 'company', value: 'company', level: 1 }
               ],
               addImportDeclaration: () => {},
-              project: new Project(),
-            },
+              project: new Project()
+            }
           )
 
-          expect(printNode(result)).toMatchInlineSnapshot(
-            `"faker.company.name()"`,
-          )
+          expect(printNode(result)).toMatchInlineSnapshot(`"faker.company.name()"`)
         })
       })
-      describe("currencyCode", () => {
-        it("should use the correct finance faker module & method to generate a currency code", () => {
+      describe('currencyCode', () => {
+        it('should use the correct finance faker module & method to generate a currency code', () => {
           const result = generators.string.create(
-            { type: "string" },
+            { type: 'string' },
             {
               next: (() => {}) as any,
               parentEntity: {
-                type: "file",
-                name: "foo",
-                path: "./foo.ts",
-                typeDeclarations: [],
+                type: 'file',
+                name: 'foo',
+                path: './foo.ts',
+                typeDeclarations: []
+              },
+              generators: {} as unknown as typeof generators,
+              fileEntity: undefined as unknown as FileEntity,
+              hints: [{ name: 'currencyCode', value: 'currencyCode', level: 1 }],
+              addImportDeclaration: () => {},
+              project: new Project()
+            }
+          )
+
+          expect(printNode(result)).toMatchInlineSnapshot(`"faker.finance.currencyCode()"`)
+        })
+      })
+      describe('id', () => {
+        it('should use the correct string faker module & method to generate an id', () => {
+          const result = generators.string.create(
+            { type: 'string' },
+            {
+              next: (() => {}) as any,
+              parentEntity: {
+                type: 'file',
+                name: 'foo',
+                path: './foo.ts',
+                typeDeclarations: []
+              },
+              generators: {} as unknown as typeof generators,
+              fileEntity: undefined as unknown as FileEntity,
+              hints: [{ name: 'id', value: 'name', level: 1 }],
+              addImportDeclaration: () => {},
+              project: new Project()
+            }
+          )
+
+          expect(printNode(result)).toMatchInlineSnapshot(`"faker.string.uuid()"`)
+        })
+      })
+      describe('url', () => {
+        it('should use the correct internet faker module & method to generate an url', () => {
+          const result = generators.string.create(
+            { type: 'string' },
+            {
+              next: (() => {}) as any,
+              parentEntity: {
+                type: 'file',
+                name: 'foo',
+                path: './foo.ts',
+                typeDeclarations: []
+              },
+              generators: {} as unknown as typeof generators,
+              fileEntity: undefined as unknown as FileEntity,
+              hints: [{ name: 'url', value: 'url', level: 1 }],
+              addImportDeclaration: () => {},
+              project: new Project()
+            }
+          )
+
+          expect(printNode(result)).toMatchInlineSnapshot(`"faker.internet.url()"`)
+        })
+      })
+      describe('url & avatar', () => {
+        it('should use the correct image faker module & method to generate an avatar', () => {
+          const result = generators.string.create(
+            { type: 'string' },
+            {
+              next: (() => {}) as any,
+              parentEntity: {
+                type: 'file',
+                name: 'foo',
+                path: './foo.ts',
+                typeDeclarations: []
               },
               generators: {} as unknown as typeof generators,
               fileEntity: undefined as unknown as FileEntity,
               hints: [
-                { name: "currencyCode", value: "currencyCode", level: 1 },
+                { name: 'url', value: 'url', level: 1 },
+                { name: 'avatar', value: 'avatar', level: 2 }
               ],
               addImportDeclaration: () => {},
-              project: new Project(),
-            },
+              project: new Project()
+            }
           )
 
-          expect(printNode(result)).toMatchInlineSnapshot(
-            `"faker.finance.currencyCode()"`,
-          )
+          expect(printNode(result)).toMatchInlineSnapshot(`"faker.image.avatar()"`)
         })
       })
-      describe("id", () => {
-        it("should use the correct string faker module & method to generate an id", () => {
+      describe('avatar', () => {
+        it('should use the correct image faker module & method to generate an avatar', () => {
           const result = generators.string.create(
-            { type: "string" },
+            { type: 'string' },
             {
               next: (() => {}) as any,
               parentEntity: {
-                type: "file",
-                name: "foo",
-                path: "./foo.ts",
-                typeDeclarations: [],
+                type: 'file',
+                name: 'foo',
+                path: './foo.ts',
+                typeDeclarations: []
               },
               generators: {} as unknown as typeof generators,
               fileEntity: undefined as unknown as FileEntity,
-              hints: [{ name: "id", value: "name", level: 1 }],
+              hints: [{ name: 'avatar', value: 'avatar', level: 1 }],
               addImportDeclaration: () => {},
-              project: new Project(),
-            },
+              project: new Project()
+            }
           )
 
-          expect(printNode(result)).toMatchInlineSnapshot(
-            `"faker.string.uuid()"`,
-          )
-        })
-      })
-      describe("url", () => {
-        it("should use the correct internet faker module & method to generate an url", () => {
-          const result = generators.string.create(
-            { type: "string" },
-            {
-              next: (() => {}) as any,
-              parentEntity: {
-                type: "file",
-                name: "foo",
-                path: "./foo.ts",
-                typeDeclarations: [],
-              },
-              generators: {} as unknown as typeof generators,
-              fileEntity: undefined as unknown as FileEntity,
-              hints: [{ name: "url", value: "url", level: 1 }],
-              addImportDeclaration: () => {},
-              project: new Project(),
-            },
-          )
-
-          expect(printNode(result)).toMatchInlineSnapshot(
-            `"faker.internet.url()"`,
-          )
-        })
-      })
-      describe("url & avatar", () => {
-        it("should use the correct image faker module & method to generate an avatar", () => {
-          const result = generators.string.create(
-            { type: "string" },
-            {
-              next: (() => {}) as any,
-              parentEntity: {
-                type: "file",
-                name: "foo",
-                path: "./foo.ts",
-                typeDeclarations: [],
-              },
-              generators: {} as unknown as typeof generators,
-              fileEntity: undefined as unknown as FileEntity,
-              hints: [
-                { name: "url", value: "url", level: 1 },
-                { name: "avatar", value: "avatar", level: 2 },
-              ],
-              addImportDeclaration: () => {},
-              project: new Project(),
-            },
-          )
-
-          expect(printNode(result)).toMatchInlineSnapshot(
-            `"faker.image.avatar()"`,
-          )
-        })
-      })
-      describe("avatar", () => {
-        it("should use the correct image faker module & method to generate an avatar", () => {
-          const result = generators.string.create(
-            { type: "string" },
-            {
-              next: (() => {}) as any,
-              parentEntity: {
-                type: "file",
-                name: "foo",
-                path: "./foo.ts",
-                typeDeclarations: [],
-              },
-              generators: {} as unknown as typeof generators,
-              fileEntity: undefined as unknown as FileEntity,
-              hints: [{ name: "avatar", value: "avatar", level: 1 }],
-              addImportDeclaration: () => {},
-              project: new Project(),
-            },
-          )
-
-          expect(printNode(result)).toMatchInlineSnapshot(
-            `"faker.image.avatar()"`,
-          )
+          expect(printNode(result)).toMatchInlineSnapshot(`"faker.image.avatar()"`)
         })
       })
     })
   })
-  describe("array", () => {
-    describe("element = alias", () => {
+  describe('array', () => {
+    describe('element = alias', () => {
       const result = generators.array.create(
         {
-          type: "array",
+          type: 'array',
           elements: {
-            type: "alias",
-            alias: "Foo",
+            type: 'alias',
+            alias: 'Foo'
           },
           readonly: true,
-          tuple: false,
+          tuple: false
         },
         {
-          ...defaultContext,
-        },
+          ...defaultContext
+        }
       )
-      it("should generate the correct output", () => {
+      it('should generate the correct output', () => {
         expect(printNode(result)).toMatchInlineSnapshot(`
           "faker.helpers.multiple(() => generateFoo(), {
               count: test?.length ?? { max: faker.number.int(42), min: 0 }
@@ -391,24 +370,24 @@ describe("generators", () => {
       })
     })
 
-    describe("element = string", () => {
-      it("should generate faker.helpers.multiple with string generator", () => {
+    describe('element = string', () => {
+      it('should generate faker.helpers.multiple with string generator', () => {
         const result = generators.array.create(
           {
-            type: "array",
-            elements: { type: "string" },
+            type: 'array',
+            elements: { type: 'string' },
             readonly: false,
-            tuple: false,
+            tuple: false
           },
           {
             ...defaultContext,
             next: (context, entity) => {
-              if (entity.type === "string") {
+              if (entity.type === 'string') {
                 return generators.string.create(entity as any, context)
               }
-              throw new Error("Unhandled entity type")
-            },
-          },
+              throw new Error('Unhandled entity type')
+            }
+          }
         )
         expect(printNode(result)).toMatchInlineSnapshot(`
           "faker.helpers.multiple(() => faker.string.alpha(), {
@@ -418,272 +397,242 @@ describe("generators", () => {
       })
     })
 
-    describe("tuple array", () => {
-      it("should generate array literal for tuple with specific elements", () => {
+    describe('tuple array', () => {
+      it('should generate array literal for tuple with specific elements', () => {
         const result = generators.array.create(
           {
-            type: "array",
-            elements: [
-              { type: "string" },
-              { type: "number" },
-              { type: "boolean" },
-            ],
+            type: 'array',
+            elements: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
             readonly: false,
-            tuple: true,
+            tuple: true
           },
           {
             ...defaultContext,
             next: (context, entity) => {
-              if (entity.type === "string") {
+              if (entity.type === 'string') {
                 return generators.string.create(entity as any, context)
               }
-              if (entity.type === "number") {
+              if (entity.type === 'number') {
                 return generators.number.create(entity as any, context)
               }
-              if (entity.type === "boolean") {
+              if (entity.type === 'boolean') {
                 return generators.boolean.create(entity as any, context)
               }
-              throw new Error("Unhandled entity type")
-            },
-          },
+              throw new Error('Unhandled entity type')
+            }
+          }
         )
-        expect(printNode(result)).toMatchInlineSnapshot(`"[faker.string.alpha(), faker.number.int(), faker.datatype.boolean()]"`)
+        expect(printNode(result)).toMatchInlineSnapshot(
+          `"[faker.string.alpha(), faker.number.int(), faker.datatype.boolean()]"`
+        )
       })
 
-      it("should generate array literal for tuple with optional elements", () => {
+      it('should generate array literal for tuple with optional elements', () => {
         const result = generators.array.create(
           {
-            type: "array",
-            elements: [
-              { type: "string" },
-              { type: "number", optional: true },
-            ],
+            type: 'array',
+            elements: [{ type: 'string' }, { type: 'number', optional: true }],
             readonly: false,
-            tuple: true,
+            tuple: true
           },
           {
             ...defaultContext,
             next: (context, entity) => {
-              if (entity.type === "string") {
+              if (entity.type === 'string') {
                 return generators.string.create(entity as any, context)
               }
-              if (entity.type === "number") {
+              if (entity.type === 'number') {
                 return generators.number.create(entity as any, context)
               }
-              throw new Error("Unhandled entity type")
-            },
-          },
+              throw new Error('Unhandled entity type')
+            }
+          }
         )
-        expect(printNode(result)).toMatchInlineSnapshot(`"[faker.string.alpha(), faker.number.int()]"`)
+        expect(printNode(result)).toMatchInlineSnapshot(
+          `"[faker.string.alpha(), faker.number.int()]"`
+        )
       })
     })
   })
 
-  describe("reference", () => {
-    describe("Date", () => {
+  describe('reference', () => {
+    describe('Date', () => {
       const result = generators.reference.create(
         {
-          type: "reference",
-          reference: "Date",
+          type: 'reference',
+          reference: 'Date'
         },
         {
-          ...defaultContext,
-        },
+          ...defaultContext
+        }
       )
-      it("should generate the correct output", () => {
+      it('should generate the correct output', () => {
         expect(printNode(result)).toMatchInlineSnapshot(`"faker.date.anytime()"`)
       })
     })
 
-    describe("custom type reference", () => {
-      it("should generate call to generated function for User type", () => {
+    describe('custom type reference', () => {
+      it('should generate call to generated function for User type', () => {
         const result = generators.reference.create(
           {
-            type: "reference",
-            reference: "User",
+            type: 'reference',
+            reference: 'User'
           },
-          defaultContext,
+          defaultContext
         )
         expect(printNode(result)).toMatchInlineSnapshot(`"generateUser()"`)
       })
 
-      it("should generate call to generated function for ProductInfo type", () => {
+      it('should generate call to generated function for ProductInfo type', () => {
         const result = generators.reference.create(
           {
-            type: "reference",
-            reference: "ProductInfo",
+            type: 'reference',
+            reference: 'ProductInfo'
           },
-          defaultContext,
+          defaultContext
         )
         expect(printNode(result)).toMatchInlineSnapshot(`"generateProductInfo()"`)
       })
     })
   })
 
-  describe("anonymous", () => {
-    it("should generate anonymous string literal", () => {
-      const result = generators.anonymous.create(
-        { type: "anonymous" },
-        defaultContext,
-      )
+  describe('anonymous', () => {
+    it('should generate anonymous string literal', () => {
+      const result = generators.anonymous.create({ type: 'anonymous' }, defaultContext)
       expect(printNode(result)).toMatchInlineSnapshot(`""anonymous""`)
     })
   })
 
-  describe("any", () => {
-    it("should generate any string literal", () => {
-      const result = generators.any.create({ type: "any" }, defaultContext)
+  describe('any', () => {
+    it('should generate any string literal', () => {
+      const result = generators.any.create({ type: 'any' }, defaultContext)
       expect(printNode(result)).toMatchInlineSnapshot(`""any""`)
     })
   })
 
-  describe("boolean", () => {
-    it("should generate faker.datatype.boolean() call", () => {
-      const result = generators.boolean.create(
-        { type: "boolean" },
-        defaultContext,
-      )
-      expect(printNode(result)).toMatchInlineSnapshot(
-        `"faker.datatype.boolean()"`,
-      )
+  describe('boolean', () => {
+    it('should generate faker.datatype.boolean() call', () => {
+      const result = generators.boolean.create({ type: 'boolean' }, defaultContext)
+      expect(printNode(result)).toMatchInlineSnapshot(`"faker.datatype.boolean()"`)
     })
   })
 
-  describe("booleanLiteral", () => {
-    it("should generate faker.datatype.boolean() call for true literal", () => {
+  describe('booleanLiteral', () => {
+    it('should generate faker.datatype.boolean() call for true literal', () => {
       const result = generators.booleanLiteral.create(
-        { type: "booleanLiteral", value: true },
-        defaultContext,
+        { type: 'booleanLiteral', value: true },
+        defaultContext
       )
-      expect(printNode(result)).toMatchInlineSnapshot(
-        `"faker.datatype.boolean()"`,
-      )
+      expect(printNode(result)).toMatchInlineSnapshot(`"faker.datatype.boolean()"`)
     })
 
-    it("should generate faker.datatype.boolean() call for false literal", () => {
+    it('should generate faker.datatype.boolean() call for false literal', () => {
       const result = generators.booleanLiteral.create(
-        { type: "booleanLiteral", value: false },
-        defaultContext,
+        { type: 'booleanLiteral', value: false },
+        defaultContext
       )
-      expect(printNode(result)).toMatchInlineSnapshot(
-        `"faker.datatype.boolean()"`,
-      )
+      expect(printNode(result)).toMatchInlineSnapshot(`"faker.datatype.boolean()"`)
     })
   })
 
-  describe("number", () => {
-    it("should generate faker.number.int() call", () => {
-      const result = generators.number.create({ type: "number" }, defaultContext)
+  describe('number', () => {
+    it('should generate faker.number.int() call', () => {
+      const result = generators.number.create({ type: 'number' }, defaultContext)
       expect(printNode(result)).toMatchInlineSnapshot(`"faker.number.int()"`)
     })
   })
 
-  describe("literal", () => {
-    it("should generate numeric literal for number values", () => {
-      const result = generators.literal.create(
-        { type: "literal", value: 42 },
-        defaultContext,
-      )
+  describe('literal', () => {
+    it('should generate numeric literal for number values', () => {
+      const result = generators.literal.create({ type: 'literal', value: 42 }, defaultContext)
       expect(printNode(result)).toMatchInlineSnapshot(`"42"`)
     })
 
-    it("should generate string literal for string values", () => {
-      const result = generators.literal.create(
-        { type: "literal", value: "hello" },
-        defaultContext,
-      )
+    it('should generate string literal for string values', () => {
+      const result = generators.literal.create({ type: 'literal', value: 'hello' }, defaultContext)
       expect(printNode(result)).toMatchInlineSnapshot(`""hello""`)
     })
 
-    it("should generate undefined identifier for undefined values", () => {
+    it('should generate undefined identifier for undefined values', () => {
       const result = generators.literal.create(
-        { type: "literal", value: undefined },
-        defaultContext,
+        { type: 'literal', value: undefined },
+        defaultContext
       )
       expect(printNode(result)).toMatchInlineSnapshot(`"undefined"`)
     })
 
-    it("should generate null literal for null values", () => {
-      const result = generators.literal.create(
-        { type: "literal", value: null },
-        defaultContext,
-      )
+    it('should generate null literal for null values', () => {
+      const result = generators.literal.create({ type: 'literal', value: null }, defaultContext)
       expect(printNode(result)).toMatchInlineSnapshot(`"null"`)
     })
   })
 
-  describe("enumLiteral", () => {
-    it("should generate enumLiteral string literal", () => {
-      const result = generators.enumLiteral.create(
-        { type: "enumLiteral" },
-        defaultContext,
-      )
+  describe('enumLiteral', () => {
+    it('should generate enumLiteral string literal', () => {
+      const result = generators.enumLiteral.create({ type: 'enumLiteral' }, defaultContext)
       expect(printNode(result)).toMatchInlineSnapshot(`""enumLiteral""`)
     })
   })
 
-  describe("never", () => {
-    it("should generate any string literal", () => {
-      const result = generators.never.create({ type: "never" }, defaultContext)
+  describe('never', () => {
+    it('should generate any string literal', () => {
+      const result = generators.never.create({ type: 'never' }, defaultContext)
       expect(printNode(result)).toMatchInlineSnapshot(`""any""`)
     })
   })
 
-  describe("enum", () => {
-    it("should generate objectProperty string literal", () => {
+  describe('enum', () => {
+    it('should generate objectProperty string literal', () => {
       const result = generators.enum.create(
         {
-          type: "enum",
+          type: 'enum',
           properties: [
             {
-              name: "VALUE_ONE",
-              property: { type: "literal", value: "one" },
-              optional: false,
-            },
-          ],
+              name: 'VALUE_ONE',
+              property: { type: 'literal', value: 'one' },
+              optional: false
+            }
+          ]
         },
-        defaultContext,
+        defaultContext
       )
       expect(printNode(result)).toMatchInlineSnapshot(`""objectProperty""`)
     })
   })
 
-  describe("unknown", () => {
-    it("should generate enumLiteral string literal", () => {
-      const result = generators.unknown.create(
-        { type: "unknown" },
-        defaultContext,
-      )
+  describe('unknown', () => {
+    it('should generate enumLiteral string literal', () => {
+      const result = generators.unknown.create({ type: 'unknown' }, defaultContext)
       expect(printNode(result)).toMatchInlineSnapshot(`""enumLiteral""`)
     })
   })
 
-  describe("object", () => {
-    it("should generate object literal with string property", () => {
+  describe('object', () => {
+    it('should generate object literal with string property', () => {
       const result = generators.object.create(
         {
-          type: "object",
+          type: 'object',
           properties: [
             {
-              type: "objectProperty",
-              name: "name",
-              property: { type: "string" },
-              optional: false,
-            },
-          ],
+              type: 'objectProperty',
+              name: 'name',
+              property: { type: 'string' },
+              optional: false
+            }
+          ]
         },
         {
           ...defaultContext,
           next: (context, entity) => {
-            if (entity.type === "objectProperty") {
+            if (entity.type === 'objectProperty') {
               return generators.objectProperty.create(entity as any, context)
             }
-            if (entity.type === "string") {
+            if (entity.type === 'string') {
               return generators.string.create(entity as any, context)
             }
-            throw new Error("Unhandled entity type")
-          },
-        },
+            throw new Error('Unhandled entity type')
+          }
+        }
       )
       expect(printNode(result)).toMatchInlineSnapshot(`
         "{
@@ -692,40 +641,40 @@ describe("generators", () => {
       `)
     })
 
-    it("should generate object literal with multiple properties", () => {
+    it('should generate object literal with multiple properties', () => {
       const result = generators.object.create(
         {
-          type: "object",
+          type: 'object',
           properties: [
             {
-              type: "objectProperty",
-              name: "id",
-              property: { type: "number" },
-              optional: false,
+              type: 'objectProperty',
+              name: 'id',
+              property: { type: 'number' },
+              optional: false
             },
             {
-              type: "objectProperty",
-              name: "email",
-              property: { type: "string" },
-              optional: true,
-            },
-          ],
+              type: 'objectProperty',
+              name: 'email',
+              property: { type: 'string' },
+              optional: true
+            }
+          ]
         },
         {
           ...defaultContext,
           next: (context, entity) => {
-            if (entity.type === "objectProperty") {
+            if (entity.type === 'objectProperty') {
               return generators.objectProperty.create(entity as any, context)
             }
-            if (entity.type === "string") {
+            if (entity.type === 'string') {
               return generators.string.create(entity as any, context)
             }
-            if (entity.type === "number") {
+            if (entity.type === 'number') {
               return generators.number.create(entity as any, context)
             }
-            throw new Error("Unhandled entity type")
-          },
-        },
+            throw new Error('Unhandled entity type')
+          }
+        }
       )
       expect(printNode(result)).toMatchInlineSnapshot(`
         "{
@@ -735,38 +684,38 @@ describe("generators", () => {
       `)
     })
 
-    it("should generate empty object literal for no properties", () => {
+    it('should generate empty object literal for no properties', () => {
       const result = generators.object.create(
         {
-          type: "object",
-          properties: [],
+          type: 'object',
+          properties: []
         },
-        defaultContext,
+        defaultContext
       )
       expect(printNode(result)).toMatchInlineSnapshot(`"{}"`)
     })
   })
 
-  describe("union", () => {
-    it("should generate selectFromUnion call with string literals", () => {
+  describe('union', () => {
+    it('should generate selectFromUnion call with string literals', () => {
       const result = generators.union.create(
         {
-          type: "union",
+          type: 'union',
           values: [
-            { type: "literal", value: "red" },
-            { type: "literal", value: "green" },
-            { type: "literal", value: "blue" },
-          ],
+            { type: 'literal', value: 'red' },
+            { type: 'literal', value: 'green' },
+            { type: 'literal', value: 'blue' }
+          ]
         },
         {
           ...defaultContext,
           next: (context, entity) => {
-            if (entity.type === "literal") {
+            if (entity.type === 'literal') {
               return generators.literal.create(entity as any, context)
             }
-            throw new Error("Unhandled entity type")
-          },
-        },
+            throw new Error('Unhandled entity type')
+          }
+        }
       )
       expect(printNode(result)).toMatchInlineSnapshot(`
         "selectFromUnion([{
@@ -782,28 +731,28 @@ describe("generators", () => {
       `)
     })
 
-    it("should generate selectFromUnion call with mixed types", () => {
+    it('should generate selectFromUnion call with mixed types', () => {
       const result = generators.union.create(
         {
-          type: "union",
+          type: 'union',
           values: [
-            { type: "literal", value: "text" },
-            { type: "literal", value: 42 },
-            { type: "boolean" },
-          ],
+            { type: 'literal', value: 'text' },
+            { type: 'literal', value: 42 },
+            { type: 'boolean' }
+          ]
         },
         {
           ...defaultContext,
           next: (context, entity) => {
-            if (entity.type === "literal") {
+            if (entity.type === 'literal') {
               return generators.literal.create(entity as any, context)
             }
-            if (entity.type === "boolean") {
+            if (entity.type === 'boolean') {
               return generators.boolean.create(entity as any, context)
             }
-            throw new Error("Unhandled entity type")
-          },
-        },
+            throw new Error('Unhandled entity type')
+          }
+        }
       )
       expect(printNode(result)).toMatchInlineSnapshot(`
         "selectFromUnion([{
@@ -820,30 +769,24 @@ describe("generators", () => {
     })
   })
 
-  describe("alias", () => {
-    it("should generate call to generated function with camelCase name", () => {
+  describe('alias', () => {
+    it('should generate call to generated function with camelCase name', () => {
       const result = generators.alias.create(
-        { type: "alias", alias: "UserProfile" },
-        defaultContext,
+        { type: 'alias', alias: 'UserProfile' },
+        defaultContext
       )
       expect(printNode(result)).toMatchInlineSnapshot(`"generateUserProfile()"`)
     })
 
-    it("should generate call for single word alias", () => {
-      const result = generators.alias.create(
-        { type: "alias", alias: "User" },
-        defaultContext,
-      )
+    it('should generate call for single word alias', () => {
+      const result = generators.alias.create({ type: 'alias', alias: 'User' }, defaultContext)
       expect(printNode(result)).toMatchInlineSnapshot(`"generateUser()"`)
     })
   })
 
-  describe("intersection", () => {
-    it("should generate object literal with intersection property", () => {
-      const result = generators.intersection.create(
-        { type: "intersection" },
-        defaultContext,
-      )
+  describe('intersection', () => {
+    it('should generate object literal with intersection property', () => {
+      const result = generators.intersection.create({ type: 'intersection' }, defaultContext)
       expect(printNode(result)).toMatchInlineSnapshot(`
         "{
             intersection: true
@@ -852,12 +795,9 @@ describe("generators", () => {
     })
   })
 
-  describe("utility", () => {
-    it("should generate object literal with utility property", () => {
-      const result = generators.utility.create(
-        { type: "utility" },
-        defaultContext,
-      )
+  describe('utility', () => {
+    it('should generate object literal with utility property', () => {
+      const result = generators.utility.create({ type: 'utility' }, defaultContext)
       expect(printNode(result)).toMatchInlineSnapshot(`
         "{
             utility: true
@@ -866,399 +806,458 @@ describe("generators", () => {
     })
   })
 
-  describe("declaration", () => {
+  describe('declaration', () => {
     const createMockContext = (overrides = {}) => ({
       ...defaultContext,
       fileEntity: {
-        type: "file" as const,
-        name: "test.ts",
-        path: "./test.ts",
-        typeDeclarations: [],
+        type: 'file' as const,
+        name: 'test.ts',
+        path: './test.ts',
+        typeDeclarations: []
       },
       addImportDeclaration: vi.fn(),
       project: {
-        getCompilerOptions: () => ({ exactOptionalPropertyTypes: false }),
+        getCompilerOptions: () => ({ exactOptionalPropertyTypes: false })
       } as any,
       next: (context, entity) => {
-        if (entity.type === "object") {
+        if (entity.type === 'object') {
           return generators.object.create(entity as any, context)
         }
-        if (entity.type === "objectProperty") {
+        if (entity.type === 'objectProperty') {
           return generators.objectProperty.create(entity as any, context)
         }
-        if (entity.type === "string") {
+        if (entity.type === 'string') {
           return generators.string.create(entity as any, context)
         }
-        if (entity.type === "number") {
+        if (entity.type === 'number') {
           return generators.number.create(entity as any, context)
         }
-        if (entity.type === "union") {
+        if (entity.type === 'union') {
           return generators.union.create(entity as any, context)
         }
-        if (entity.type === "literal") {
+        if (entity.type === 'literal') {
           return generators.literal.create(entity as any, context)
         }
         throw new Error(`Unhandled entity type: ${entity.type}`)
       },
-      ...overrides,
+      ...overrides
     })
 
-    describe("basic object declaration", () => {
-      it("should generate function declaration for simple object type", () => {
+    describe('basic object declaration', () => {
+      it('should generate function declaration for simple object type', () => {
         const mockContext = createMockContext()
         const result = generators.declaration.create(
           {
-            type: "declaration",
-            name: "User",
+            type: 'declaration',
+            name: 'User',
             exported: true,
             declaration: {
-              type: "object",
+              type: 'object',
               properties: [
                 {
-                  type: "objectProperty",
-                  name: "name",
-                  property: { type: "string" },
-                  optional: false,
+                  type: 'objectProperty',
+                  name: 'name',
+                  property: { type: 'string' },
+                  optional: false
                 },
                 {
-                  type: "objectProperty",
-                  name: "age",
-                  property: { type: "number" },
-                  optional: false,
-                },
-              ],
-            },
+                  type: 'objectProperty',
+                  name: 'age',
+                  property: { type: 'number' },
+                  optional: false
+                }
+              ]
+            }
           },
-          mockContext,
+          mockContext
         )
 
         expect(printNode(result)).toMatchInlineSnapshot(`
-          "{
-              export function generateUser<const T extends PartialDeep<User>>(user?: T, options?: {
-                  seed: number | number[];
-              }) { if (options?.seed !== undefined) {
-                  faker.seed(options.seed);
-              } return merge({
-                  name: faker.string.alpha(),
-                  age: faker.number.int()
-              } as const satisfies ReadonlyDeep<User>, user ?? {}) as SimplifyDeep<User & T>; }
-          }"
-        `)
+					"{
+					    export function generateUser(user?: never, options?: {
+					        seed: number | number[];
+					    }): User;
+					    export function generateUser<const T extends undefined>(user?: T, options?: {
+					        seed: number | number[];
+					    }): User;
+					    export function generateUser<const T extends typeof _>(user: T, options?: {
+					        seed: number | number[];
+					    }): User;
+					    export function generateUser<const T extends PartialDeep<User>>(user: T, options?: {
+					        seed: number | number[];
+					    }): MergeResult<User, T, {
+					        preferUndefinedSource: false;
+					    }>;
+					    export function generateUser<const T extends PartialDeep<User>>(user?: T, options?: {
+					        seed: number | number[];
+					    }) { if (options?.seed !== undefined) {
+					        faker.seed(options.seed);
+					    } return merge({
+					        name: faker.string.alpha(),
+					        age: faker.number.int()
+					    }, user, { preferUndefinedSource: false }); }
+					}"
+				`)
         expect(mockContext.addImportDeclaration).toHaveBeenCalledWith({
-          named: [{ name: "User", typeOnly: true }],
-          specifier: "./test.ts",
-          typeOnly: false,
+          named: [{ name: 'User', typeOnly: true }],
+          specifier: './test.ts',
+          typeOnly: false
         })
       })
     })
 
-    describe("union with undefined", () => {
-      it("should generate function overloads for union type with undefined", () => {
+    describe('union with undefined', () => {
+      it('should generate function overloads for union type with undefined', () => {
         const mockContext = createMockContext()
         const result = generators.declaration.create(
           {
-            type: "declaration",
-            name: "OptionalUser",
+            type: 'declaration',
+            name: 'OptionalUser',
             exported: true,
             declaration: {
-              type: "union",
+              type: 'union',
               values: [
                 {
-                  type: "object",
+                  type: 'object',
                   properties: [
                     {
-                      type: "objectProperty",
-                      name: "name",
-                      property: { type: "string" },
-                      optional: false,
-                    },
-                  ],
+                      type: 'objectProperty',
+                      name: 'name',
+                      property: { type: 'string' },
+                      optional: false
+                    }
+                  ]
                 },
-                { type: "literal", value: undefined },
-              ],
-            },
+                { type: 'literal', value: undefined }
+              ]
+            }
           },
-          mockContext,
+          mockContext
         )
 
         expect(printNode(result)).toMatchInlineSnapshot(`
-          "{
-              export function generateOptionalUser<const T extends PartialDeep<OptionalUser>>(optionalUser?: T, options?: {
-                  seed: number | number[];
-              }) { if (options?.seed !== undefined) {
-                  faker.seed(options.seed);
-              } return "0" in arguments && optionalUser !== _ ? optionalUser : selectFromUnion([{
-                      schema: JSON.parse("{\\"type\\":\\"object\\",\\"properties\\":{\\"name\\":{\\"schema\\":{\\"type\\":\\"primitive\\",\\"primitiveType\\":\\"string\\"},\\"optional\\":false}},\\"requiredProperties\\":[\\"name\\"],\\"optionalProperties\\":[]}"),
-                      generator: () => ({
-                          name: faker.string.alpha()
-                      })
-                  }, {
-                      schema: JSON.parse("{\\"type\\":\\"literal\\"}"),
-                      generator: () => undefined
-                  }], optionalUser); }
-          }"
-        `)
+					"{
+					    export function generateOptionalUser<const T extends undefined>(optionalUser: T, options?: {
+					        seed: number | number[];
+					    }): undefined;
+					    export function generateOptionalUser(optionalUser?: never, options?: {
+					        seed: number | number[];
+					    }): OptionalUser;
+					    export function generateOptionalUser<const T extends typeof _>(optionalUser: T, options?: {
+					        seed: number | number[];
+					    }): OptionalUser;
+					    export function generateOptionalUser<const T extends OptionalUser>(optionalUser: T, options?: {
+					        seed: number | number[];
+					    }): T;
+					    export function generateOptionalUser<const T extends OptionalUser | undefined | typeof _>(optionalUser?: T, options?: {
+					        seed: number | number[];
+					    }) { if (options?.seed !== undefined) {
+					        faker.seed(options.seed);
+					    } return merge(selectFromUnion([{
+					            schema: JSON.parse("{\\"type\\":\\"object\\",\\"properties\\":{\\"name\\":{\\"schema\\":{\\"type\\":\\"primitive\\",\\"primitiveType\\":\\"string\\"},\\"optional\\":false}},\\"requiredProperties\\":[\\"name\\"],\\"optionalProperties\\":[]}"),
+					            generator: () => ({
+					                name: faker.string.alpha()
+					            })
+					        }, {
+					            schema: JSON.parse("{\\"type\\":\\"literal\\"}"),
+					            generator: () => undefined
+					        }], optionalUser), optionalUser, { preferUndefinedSource: true }); }
+					}"
+				`)
       })
     })
 
-    describe("union without undefined", () => {
-      it("should generate function with nullish coalescing for regular union", () => {
+    describe('union without undefined', () => {
+      it('should generate function with nullish coalescing for regular union', () => {
         const mockContext = createMockContext()
         const result = generators.declaration.create(
           {
-            type: "declaration",
-            name: "Status",
+            type: 'declaration',
+            name: 'Status',
             exported: true,
             declaration: {
-              type: "union",
+              type: 'union',
               values: [
-                { type: "literal", value: "active" },
-                { type: "literal", value: "inactive" },
-              ],
-            },
+                { type: 'literal', value: 'active' },
+                { type: 'literal', value: 'inactive' }
+              ]
+            }
           },
-          mockContext,
+          mockContext
         )
 
         expect(printNode(result)).toMatchInlineSnapshot(`
-          "{
-              export function generateStatus<const T extends PartialDeep<Status>>(status?: T, options?: {
-                  seed: number | number[];
-              }) { if (options?.seed !== undefined) {
-                  faker.seed(options.seed);
-              } return (status ?? selectFromUnion([{
-                      schema: JSON.parse("{\\"type\\":\\"literal\\",\\"value\\":\\"active\\"}"),
-                      generator: () => "active"
-                  }, {
-                      schema: JSON.parse("{\\"type\\":\\"literal\\",\\"value\\":\\"inactive\\"}"),
-                      generator: () => "inactive"
-                  }], status)) as MergeDeep<NarrowUnionMember<Status, T>, T, {
-                  recurseIntoArrays: true;
-              }>; }
-          }"
-        `)
+					"{
+					    export function generateStatus(status?: never, options?: {
+					        seed: number | number[];
+					    }): Status;
+					    export function generateStatus<const T extends undefined>(status?: T, options?: {
+					        seed: number | number[];
+					    }): Status;
+					    export function generateStatus<const T extends Status>(status: T, options?: {
+					        seed: number | number[];
+					    }): T;
+					    export function generateStatus<const T extends Status | typeof _>(status: T, options?: {
+					        seed: number | number[];
+					    }) { if (options?.seed !== undefined) {
+					        faker.seed(options.seed);
+					    } return merge(selectFromUnion([{
+					            schema: JSON.parse("{\\"type\\":\\"literal\\",\\"value\\":\\"active\\"}"),
+					            generator: () => "active"
+					        }, {
+					            schema: JSON.parse("{\\"type\\":\\"literal\\",\\"value\\":\\"inactive\\"}"),
+					            generator: () => "inactive"
+					        }], status), status, { preferUndefinedSource: false }); }
+					}"
+				`)
       })
     })
 
-    describe("string declaration", () => {
-      it("should generate function for simple string type", () => {
+    describe('string declaration', () => {
+      it('should generate function for simple string type', () => {
         const mockContext = createMockContext()
         const result = generators.declaration.create(
           {
-            type: "declaration",
-            name: "Email",
+            type: 'declaration',
+            name: 'Email',
             exported: true,
-            declaration: { type: "string" },
+            declaration: { type: 'string' }
           },
-          mockContext,
+          mockContext
         )
 
         expect(printNode(result)).toMatchInlineSnapshot(`
-          "{
-              export function generateEmail<const T extends Email>(email?: T, options?: {
-                  seed: number | number[];
-              }) { if (options?.seed !== undefined) {
-                  faker.seed(options.seed);
-              } return merge(faker.string.alpha(), email ?? {}) as SimplifyDeep<Email & T>; }
-          }"
-        `)
+					"{
+					    export function generateEmail<const T extends Email>(email?: T, options?: {
+					        seed: number | number[];
+					    }) { if (options?.seed !== undefined) {
+					        faker.seed(options.seed);
+					    } return merge(faker.string.alpha(), email, { preferUndefinedSource: false }); }
+					}"
+				`)
       })
     })
 
-    describe("object with optional properties", () => {
-      it("should handle optional properties without exactOptionalPropertyTypes", () => {
+    describe('object with optional properties', () => {
+      it('should handle optional properties without exactOptionalPropertyTypes', () => {
         const mockContext = createMockContext({
           project: {
-            getCompilerOptions: () => ({ exactOptionalPropertyTypes: false }),
-          },
+            getCompilerOptions: () => ({ exactOptionalPropertyTypes: false })
+          }
         })
 
         const result = generators.declaration.create(
           {
-            type: "declaration",
-            name: "Profile",
+            type: 'declaration',
+            name: 'Profile',
             exported: true,
             declaration: {
-              type: "object",
+              type: 'object',
               properties: [
                 {
-                  type: "objectProperty",
-                  name: "name",
-                  property: { type: "string" },
-                  optional: false,
+                  type: 'objectProperty',
+                  name: 'name',
+                  property: { type: 'string' },
+                  optional: false
                 },
                 {
-                  type: "objectProperty",
-                  name: "bio",
-                  property: { type: "string" },
-                  optional: true,
-                },
-              ],
-            },
+                  type: 'objectProperty',
+                  name: 'bio',
+                  property: { type: 'string' },
+                  optional: true
+                }
+              ]
+            }
           },
-          mockContext,
+          mockContext
         )
 
         expect(printNode(result)).toMatchInlineSnapshot(`
-          "{
-              export function generateProfile<const T extends PartialDeep<Profile>>(profile?: T, options?: {
-                  seed: number | number[];
-              }) { if (options?.seed !== undefined) {
-                  faker.seed(options.seed);
-              } return merge({
-                  name: faker.string.alpha(),
-                  bio: faker.string.alpha()
-              } as const satisfies ReadonlyDeep<Profile>, profile ?? {}) as SimplifyDeep<Profile & T>; }
-          }"
-        `)
+					"{
+					    export function generateProfile(profile?: never, options?: {
+					        seed: number | number[];
+					    }): Profile;
+					    export function generateProfile<const T extends undefined>(profile?: T, options?: {
+					        seed: number | number[];
+					    }): Profile;
+					    export function generateProfile<const T extends typeof _>(profile: T, options?: {
+					        seed: number | number[];
+					    }): Profile;
+					    export function generateProfile<const T extends PartialDeep<Profile>>(profile: T, options?: {
+					        seed: number | number[];
+					    }): MergeResult<Profile, T, {
+					        preferUndefinedSource: false;
+					    }>;
+					    export function generateProfile<const T extends PartialDeep<Profile>>(profile?: T, options?: {
+					        seed: number | number[];
+					    }) { if (options?.seed !== undefined) {
+					        faker.seed(options.seed);
+					    } return merge({
+					        name: faker.string.alpha(),
+					        bio: faker.string.alpha()
+					    }, profile, { preferUndefinedSource: false }); }
+					}"
+				`)
       })
 
-      it("should handle optional properties with exactOptionalPropertyTypes", () => {
+      it('should handle optional properties with exactOptionalPropertyTypes', () => {
         const mockContext = createMockContext({
           project: {
-            getCompilerOptions: () => ({ exactOptionalPropertyTypes: true }),
-          },
+            getCompilerOptions: () => ({ exactOptionalPropertyTypes: true })
+          }
         })
 
         const result = generators.declaration.create(
           {
-            type: "declaration",
-            name: "Profile",
+            type: 'declaration',
+            name: 'Profile',
             exported: true,
             declaration: {
-              type: "object",
+              type: 'object',
               properties: [
                 {
-                  type: "objectProperty",
-                  name: "name",
-                  property: { type: "string" },
-                  optional: false,
+                  type: 'objectProperty',
+                  name: 'name',
+                  property: { type: 'string' },
+                  optional: false
                 },
                 {
-                  type: "objectProperty",
-                  name: "bio",
-                  property: { type: "string" },
-                  optional: true,
+                  type: 'objectProperty',
+                  name: 'bio',
+                  property: { type: 'string' },
+                  optional: true
                 },
                 {
-                  type: "objectProperty",
-                  name: "avatar",
-                  property: { type: "string" },
-                  optional: true,
-                },
-              ],
-            },
+                  type: 'objectProperty',
+                  name: 'avatar',
+                  property: { type: 'string' },
+                  optional: true
+                }
+              ]
+            }
           },
-          mockContext,
+          mockContext
         )
 
         expect(printNode(result)).toMatchInlineSnapshot(`
-          "{
-              export function generateProfile<const T extends PartialDeep<Profile>>(profile?: T, options?: {
-                  seed: number | number[];
-              }) { if (options?.seed !== undefined) {
-                  faker.seed(options.seed);
-              } return merge(omit(faker.helpers.arrayElements(["bio", "avatar"], { min: 0, max: 2 }), {
-                  name: faker.string.alpha(),
-                  bio: faker.string.alpha(),
-                  avatar: faker.string.alpha()
-              }) as const satisfies ReadonlyDeep<Profile>, profile ?? {}) as SimplifyDeep<Profile & T>; }
-          }"
-        `)
+					"{
+					    export function generateProfile(profile?: never, options?: {
+					        seed: number | number[];
+					    }): Profile;
+					    export function generateProfile<const T extends undefined>(profile?: T, options?: {
+					        seed: number | number[];
+					    }): Profile;
+					    export function generateProfile<const T extends typeof _>(profile: T, options?: {
+					        seed: number | number[];
+					    }): Profile;
+					    export function generateProfile<const T extends PartialDeep<Profile>>(profile: T, options?: {
+					        seed: number | number[];
+					    }): MergeResult<Profile, T, {
+					        preferUndefinedSource: false;
+					    }>;
+					    export function generateProfile<const T extends PartialDeep<Profile>>(profile?: T, options?: {
+					        seed: number | number[];
+					    }) { if (options?.seed !== undefined) {
+					        faker.seed(options.seed);
+					    } return merge({
+					        name: faker.string.alpha(),
+					        bio: faker.string.alpha(),
+					        avatar: faker.string.alpha()
+					    }, profile, { preferUndefinedSource: false }); }
+					}"
+				`)
       })
     })
 
-    describe("import declarations", () => {
-      it("should add correct import declarations", () => {
+    describe('import declarations', () => {
+      it('should add correct import declarations', () => {
         const mockContext = createMockContext()
         generators.declaration.create(
           {
-            type: "declaration",
-            name: "TestType",
+            type: 'declaration',
+            name: 'TestType',
             exported: true,
-            declaration: { type: "string" },
+            declaration: { type: 'string' }
           },
-          mockContext,
+          mockContext
         )
 
         expect(mockContext.addImportDeclaration).toHaveBeenCalledWith({
-          named: [{ name: "TestType", typeOnly: true }],
-          specifier: "./test.ts",
-          typeOnly: false,
+          named: [{ name: 'TestType', typeOnly: true }],
+          specifier: './test.ts',
+          typeOnly: false
         })
       })
     })
 
-    describe("function naming", () => {
-      it("should generate camelCase function names", () => {
+    describe('function naming', () => {
+      it('should generate camelCase function names', () => {
         const mockContext = createMockContext()
-        
+
         const result1 = generators.declaration.create(
           {
-            type: "declaration",
-            name: "UserProfile",
+            type: 'declaration',
+            name: 'UserProfile',
             exported: true,
-            declaration: { type: "string" },
+            declaration: { type: 'string' }
           },
-          mockContext,
+          mockContext
         )
         expect(printNode(result1)).toMatchInlineSnapshot(`
-          "{
-              export function generateUserProfile<const T extends UserProfile>(userProfile?: T, options?: {
-                  seed: number | number[];
-              }) { if (options?.seed !== undefined) {
-                  faker.seed(options.seed);
-              } return merge(faker.string.alpha(), userProfile ?? {}) as SimplifyDeep<UserProfile & T>; }
-          }"
-        `)
+					"{
+					    export function generateUserProfile<const T extends UserProfile>(userProfile?: T, options?: {
+					        seed: number | number[];
+					    }) { if (options?.seed !== undefined) {
+					        faker.seed(options.seed);
+					    } return merge(faker.string.alpha(), userProfile, { preferUndefinedSource: false }); }
+					}"
+				`)
 
         const result2 = generators.declaration.create(
           {
-            type: "declaration",
-            name: "APIResponse",
+            type: 'declaration',
+            name: 'APIResponse',
             exported: true,
-            declaration: { type: "string" },
+            declaration: { type: 'string' }
           },
-          mockContext,
+          mockContext
         )
         expect(printNode(result2)).toMatchInlineSnapshot(`
-          "{
-              export function generateApiResponse<const T extends APIResponse>(apiResponse?: T, options?: {
-                  seed: number | number[];
-              }) { if (options?.seed !== undefined) {
-                  faker.seed(options.seed);
-              } return merge(faker.string.alpha(), apiResponse ?? {}) as SimplifyDeep<APIResponse & T>; }
-          }"
-        `)
+					"{
+					    export function generateApiResponse<const T extends APIResponse>(apiResponse?: T, options?: {
+					        seed: number | number[];
+					    }) { if (options?.seed !== undefined) {
+					        faker.seed(options.seed);
+					    } return merge(faker.string.alpha(), apiResponse, { preferUndefinedSource: false }); }
+					}"
+				`)
       })
     })
   })
 
-  describe("entityToSchema", () => {
-    // Function is imported at the top of the file
-    
-    describe("object entities", () => {
-      it("should convert object entity to ObjectSchema", () => {
+  describe('entityToSchema', () => {
+    describe('object entities', () => {
+      it('should convert object entity to ObjectSchema', () => {
         const objectEntity = {
-          type: "object" as const,
+          type: 'object' as const,
           properties: [
             {
-              type: "objectProperty" as const,
-              name: "email",
-              property: { type: "string" as const },
+              type: 'objectProperty' as const,
+              name: 'email',
+              property: { type: 'string' as const },
               optional: false
             },
             {
-              type: "objectProperty" as const,
-              name: "name", 
-              property: { type: "string" as const },
+              type: 'objectProperty' as const,
+              name: 'name',
+              property: { type: 'string' as const },
               optional: true
             }
           ]
         }
 
         const result = entityToSchema(objectEntity)
-        
+
         expect(result).toEqual({
           type: 'object',
           properties: {
@@ -1277,19 +1276,19 @@ describe("generators", () => {
       })
     })
 
-    describe("union entities", () => {
-      it("should convert union entity to UnionSchema", () => {
+    describe('union entities', () => {
+      it('should convert union entity to UnionSchema', () => {
         const unionEntity = {
-          type: "union" as const,
+          type: 'union' as const,
           values: [
-            { type: "string" as const },
-            { type: "number" as const },
-            { type: "literal" as const, value: null }
+            { type: 'string' as const },
+            { type: 'number' as const },
+            { type: 'literal' as const, value: null }
           ]
         }
 
         const result = entityToSchema(unionEntity)
-        
+
         expect(result).toEqual({
           type: 'union',
           members: [
@@ -1301,20 +1300,17 @@ describe("generators", () => {
       })
     })
 
-    describe("array entities", () => {
-      it("should convert tuple array entity to ArraySchema", () => {
+    describe('array entities', () => {
+      it('should convert tuple array entity to ArraySchema', () => {
         const tupleEntity = {
-          type: "array" as const,
+          type: 'array' as const,
           tuple: true as const,
           readonly: false,
-          elements: [
-            { type: "string" as const },
-            { type: "number" as const }
-          ]
+          elements: [{ type: 'string' as const }, { type: 'number' as const }]
         }
 
         const result = entityToSchema(tupleEntity)
-        
+
         expect(result).toEqual({
           type: 'array',
           tuple: true,
@@ -1326,16 +1322,16 @@ describe("generators", () => {
         })
       })
 
-      it("should convert regular array entity to ArraySchema", () => {
+      it('should convert regular array entity to ArraySchema', () => {
         const arrayEntity = {
-          type: "array" as const,
+          type: 'array' as const,
           tuple: false as const,
           readonly: false,
-          elements: { type: "string" as const }
+          elements: { type: 'string' as const }
         }
 
         const result = entityToSchema(arrayEntity)
-        
+
         expect(result).toEqual({
           type: 'array',
           tuple: false,
@@ -1345,147 +1341,159 @@ describe("generators", () => {
       })
     })
 
-    describe("primitive entities", () => {
-      it("should convert string entity to PrimitiveSchema", () => {
-        const result = entityToSchema({ type: "string" as const })
+    describe('primitive entities', () => {
+      it('should convert string entity to PrimitiveSchema', () => {
+        const result = entityToSchema({ type: 'string' as const })
         expect(result).toEqual({ type: 'primitive', primitiveType: 'string' })
       })
 
-      it("should convert number entity to PrimitiveSchema", () => {
-        const result = entityToSchema({ type: "number" as const })
+      it('should convert number entity to PrimitiveSchema', () => {
+        const result = entityToSchema({ type: 'number' as const })
         expect(result).toEqual({ type: 'primitive', primitiveType: 'number' })
       })
 
-      it("should convert boolean entity to PrimitiveSchema", () => {
-        const result = entityToSchema({ type: "boolean" as const })
+      it('should convert boolean entity to PrimitiveSchema', () => {
+        const result = entityToSchema({ type: 'boolean' as const })
         expect(result).toEqual({ type: 'primitive', primitiveType: 'boolean' })
       })
 
-      it("should convert any entity to PrimitiveSchema", () => {
-        const result = entityToSchema({ type: "any" as const })
+      it('should convert any entity to PrimitiveSchema', () => {
+        const result = entityToSchema({ type: 'any' as const })
         expect(result).toEqual({ type: 'primitive', primitiveType: 'any' })
       })
     })
 
-    describe("literal entities", () => {
-      it("should convert literal entity to LiteralSchema", () => {
-        const result = entityToSchema({ type: "literal" as const, value: "test" })
-        expect(result).toEqual({ type: 'literal', value: "test" })
+    describe('literal entities', () => {
+      it('should convert literal entity to LiteralSchema', () => {
+        const result = entityToSchema({
+          type: 'literal' as const,
+          value: 'test'
+        })
+        expect(result).toEqual({ type: 'literal', value: 'test' })
       })
 
-      it("should convert booleanLiteral entity to LiteralSchema", () => {
-        const result = entityToSchema({ type: "booleanLiteral" as const, value: true })
+      it('should convert booleanLiteral entity to LiteralSchema', () => {
+        const result = entityToSchema({
+          type: 'booleanLiteral' as const,
+          value: true
+        })
         expect(result).toEqual({ type: 'literal', value: true })
       })
     })
 
-    describe("reference entities", () => {
-      it("should convert reference entity to ReferenceSchema", () => {
-        const result = entityToSchema({ type: "reference" as const, reference: "User" })
-        expect(result).toEqual({ type: 'reference', reference: "User" })
+    describe('reference entities', () => {
+      it('should convert reference entity to ReferenceSchema', () => {
+        const result = entityToSchema({
+          type: 'reference' as const,
+          reference: 'User'
+        })
+        expect(result).toEqual({ type: 'reference', reference: 'User' })
       })
 
-      it("should convert alias entity to ReferenceSchema", () => {
-        const result = entityToSchema({ type: "alias" as const, alias: "UserType" })
-        expect(result).toEqual({ type: 'reference', reference: "UserType" })
+      it('should convert alias entity to ReferenceSchema', () => {
+        const result = entityToSchema({
+          type: 'alias' as const,
+          alias: 'UserType'
+        })
+        expect(result).toEqual({ type: 'reference', reference: 'UserType' })
       })
     })
 
-    describe("unsupported entities", () => {
-      it("should fallback to any primitive for unsupported types", () => {
-        const result = entityToSchema({ type: "intersection" as const })
+    describe('unsupported entities', () => {
+      it('should fallback to any primitive for unsupported types', () => {
+        const result = entityToSchema({ type: 'intersection' as const })
         expect(result).toEqual({ type: 'primitive', primitiveType: 'any' })
       })
     })
   })
 
-  describe("union with intelligent selection", () => {
-    it("should generate selectFromUnion call with union members", () => {
+  describe('union with intelligent selection', () => {
+    it('should generate selectFromUnion call with union members', () => {
       const result = generators.union.create(
         {
-          type: "union",
+          type: 'union',
           values: [
-            { type: "literal", value: "red" },
-            { type: "literal", value: "green" },
-            { type: "literal", value: "blue" },
-          ],
+            { type: 'literal', value: 'red' },
+            { type: 'literal', value: 'green' },
+            { type: 'literal', value: 'blue' }
+          ]
         },
         {
           ...defaultContext,
           next: (context, entity) => {
-            if (entity.type === "literal") {
+            if (entity.type === 'literal') {
               return generators.literal.create(entity as any, context)
             }
-            throw new Error("Unhandled entity type")
-          },
-        },
+            throw new Error('Unhandled entity type')
+          }
+        }
       )
-      
+
       const generated = printNode(result)
-      
+
       // Should use selectFromUnion instead of arrayElement
       expect(generated).toContain('selectFromUnion')
       expect(generated).not.toContain('arrayElement')
-      
+
       // Should contain union member objects with schema and generator properties
       expect(generated).toContain('schema')
       expect(generated).toContain('generator')
     })
 
-    it("should generate intelligent union selection for object types", () => {
+    it('should generate intelligent union selection for object types', () => {
       const result = generators.union.create(
         {
-          type: "union",
+          type: 'union',
           values: [
             {
-              type: "object",
+              type: 'object',
               properties: [
                 {
-                  type: "objectProperty",
-                  name: "email",
-                  property: { type: "string" },
+                  type: 'objectProperty',
+                  name: 'email',
+                  property: { type: 'string' },
                   optional: false
                 }
               ]
             },
             {
-              type: "object", 
+              type: 'object',
               properties: [
                 {
-                  type: "objectProperty",
-                  name: "id",
-                  property: { type: "string" },
+                  type: 'objectProperty',
+                  name: 'id',
+                  property: { type: 'string' },
                   optional: false
                 },
                 {
-                  type: "objectProperty",
-                  name: "name",
-                  property: { type: "string" },
+                  type: 'objectProperty',
+                  name: 'name',
+                  property: { type: 'string' },
                   optional: false
                 }
               ]
             }
-          ],
+          ]
         },
         {
           ...defaultContext,
           next: (context, entity) => {
-            if (entity.type === "object") {
+            if (entity.type === 'object') {
               return generators.object.create(entity as any, context)
             }
-            if (entity.type === "objectProperty") {
+            if (entity.type === 'objectProperty') {
               return generators.objectProperty.create(entity as any, context)
             }
-            if (entity.type === "string") {
+            if (entity.type === 'string') {
               return generators.string.create(entity as any, context)
             }
-            throw new Error("Unhandled entity type")
-          },
-        },
+            throw new Error('Unhandled entity type')
+          }
+        }
       )
-      
+
       const generated = printNode(result)
-      
+
       // Should generate selectFromUnion call with object schemas
       expect(generated).toContain('selectFromUnion')
       expect(generated).toContain('schema')
@@ -1493,36 +1501,36 @@ describe("generators", () => {
       expect(generated).toContain('object')
     })
 
-    it("should pass the correct parameter to selectFromUnion", () => {
+    it('should pass the correct parameter to selectFromUnion', () => {
       const mockContext = {
         ...defaultContext,
         parentDeclarationEntity: {
-          type: "declaration" as const,
-          name: "TestType",
+          type: 'declaration' as const,
+          name: 'TestType',
           exported: false,
-          declaration: { type: "string" as const }
+          declaration: { type: 'string' as const }
         },
         next: (context, entity) => {
-          if (entity.type === "literal") {
+          if (entity.type === 'literal') {
             return generators.literal.create(entity as any, context)
           }
-          throw new Error("Unhandled entity type")
-        },
+          throw new Error('Unhandled entity type')
+        }
       }
 
       const result = generators.union.create(
         {
-          type: "union",
+          type: 'union',
           values: [
-            { type: "literal", value: "option1" },
-            { type: "literal", value: "option2" },
-          ],
+            { type: 'literal', value: 'option1' },
+            { type: 'literal', value: 'option2' }
+          ]
         },
-        mockContext,
+        mockContext
       )
-      
+
       const generated = printNode(result)
-      
+
       // Should pass the camelCased parameter name
       expect(generated).toContain('testType') // camelCase of "TestType"
     })
