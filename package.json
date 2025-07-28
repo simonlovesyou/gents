@@ -15,5 +15,8 @@
   "scripts": {
     "build": "bun run --filter './packages/**' build"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@biomejs/biome": "^2.1.2"
+  }
 }
