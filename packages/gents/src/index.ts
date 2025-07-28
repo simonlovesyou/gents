@@ -1,4 +1,159 @@
-export const _ = Symbol("_");
+import deepMerge_, { type Options as DeepMergeOptions } from 'deepmerge'
+import type { MergeDeep } from 'type-fest'
+
+export const _ = Symbol('_')
+interface Options {
+  arrayMergeMode?: 'spread' | 'replace'
+  preferUndefinedSource?: boolean
+}
+
+const arrayMergeSpread = (target: any[], source: any[], options?: DeepMergeOptions) => {
+  const maxLength = Math.max(target.length, source.length)
+  const result: any[] = []
+
+  for (let i = 0; i < maxLength; i++) {
+    const targetItem = target[i]
+    const sourceItem = source[i]
+
+    const isTargetPresent = i < target.length
+    const isSourcePresent = i < source.length
+
+    if (isTargetPresent && isSourcePresent) {
+      // Both items exist - deep merge them
+      if (
+        typeof targetItem === 'object' &&
+        typeof sourceItem === 'object' &&
+        targetItem !== null &&
+        sourceItem !== null &&
+        !Array.isArray(targetItem) &&
+        !Array.isArray(sourceItem)
+      ) {
+        result[i] = deepMerge_(targetItem, sourceItem, options)
+      } else {
+        // If either is not an object, source takes precedence
+        result[i] = sourceItem
+      }
+    } else if (isSourcePresent) {
+      // Only source item exists
+      result[i] = sourceItem
+    } else {
+      // Only target item exists
+      result[i] = targetItem
+    }
+  }
+
+  return result
+}
+
+const arrayMergeReplace = (_target: any[], source: any[]) => {
+  return source
+}
+
+// Needed to fix a type error with `type-fest`'s `MergeDeep`
+// where source arrays do not replace target arrays when target is empty
+export type PrepareForMergeDeep<T> = T extends never[] | readonly never[] | []
+  ? unknown
+  : T extends readonly any[]
+    ? number extends T['length']
+      ? PrepareForMergeDeep<T[number]>[]
+      : { [K in keyof T]: PrepareForMergeDeep<T[K]> }
+    : T extends Date
+      ? T
+      : T extends object
+        ? { [K in keyof T]: PrepareForMergeDeep<T[K]> }
+        : T
+
+/**
+ * Merges two values deeply, recursively merging arrays with the specified array merge mode.
+ *
+ * - If source is not an object (string, number, boolean, symbol, null, undefined, etc.), returns source.
+ * - If target is not an object, returns source.
+ * - Properties that only exist in one object are copied into the new object.
+ * - Properties that exist in both objects are merged if possible or replaced by the one of the source if not.
+ * - By default, inner arrays and tuples are spread from source into target if they're both objects, otherwise the element from source is used. See `arrayMergeMode` option to change this behaviour.
+ *
+ * @param target - The target value to merge into
+ * @param source - The source value to merge from
+ * @param options - The options for the merge
+ * @param options.arrayMergeMode - The array merge mode to use. Defaults to `'spread'`.
+ * @returns The merged value or source if it cannot be merged
+ *
+ * @example with non-object source
+ * ```ts
+ * const target = { a: 1, b: 2 }
+ * const source = "hello"
+ * const merged = merge(target, source)
+ * //    ^? "hello"
+ * ```
+ *
+ * @example with objects and `arrayMergeMode: 'spread'`
+ * ```ts
+ * const target = { a: 1, b: 2, c:  [{foo: 1}, {foo: 2}, {foo: 3}] }
+ * const source = { a: 10, b: 20, c: [{bar: 1}, {bar: 2}] }
+ * const merged = merge(target, source, { arrayMergeMode: 'spread' })
+ * //    ^? { a: 10, b: 20, c: [{foo: 1, bar: 1}, {foo: 2, bar: 2}, {foo: 3}]] }
+ * ```
+ *
+ * @example with objects and `arrayMergeMode: 'replace'`
+ * ```ts
+ * const target = { a: 1, b: 2, c: [{foo: 1}, {foo: 2}, {foo: 3}] }
+ * const source = { a: 10, b: 20, c: [{bar: 1}, {bar: 2}] }
+ * const merged = merge(target, source, { arrayMergeMode: 'replace' })
+ * //    ^? { a: 10, b: 20, c: [{bar: 1}, {bar: 2}] }
+ * ```
+ */
+// Helper type for merge return type
+export type MergeResult<A, B, TOptions extends Options> = B extends typeof _
+  ? A
+  : B extends undefined
+    ? TOptions extends { preferUndefinedSource: false }
+      ? A
+      : B
+    : B extends object
+      ? A extends object
+        ? MergeDeep<
+            PrepareForMergeDeep<A>,
+            B,
+            {
+              recurseIntoArrays: true
+              arrayMergeMode: TOptions extends undefined ? 'spread' : TOptions['arrayMergeMode']
+            }
+          >
+        : B
+      : B
+
+export function merge<A, B, TOptions extends Options = {}>(
+  target: A,
+  source: B,
+  options?: TOptions
+): MergeResult<A, B, TOptions> {
+  if (source === _) {
+    return target as any
+  }
+
+  // If preferUndefinedSource is explicitly false and source is undefined, return target
+  // If preferUndefinedSource is true or undefined (default), prefer source (keep undefined)
+  if (options?.preferUndefinedSource === false && source === undefined) {
+    return target as any
+  }
+
+  // If source is not an object (string, number, boolean, symbol, null, undefined, etc.), return source
+  if (typeof source !== 'object' || source === null) {
+    return source as any
+  }
+
+  // If target is not an object, return source
+  if (typeof target !== 'object' || target === null) {
+    return source as any
+  }
+
+  const arrayMergeMode = options?.arrayMergeMode ?? 'spread'
+
+  return deepMerge_(target, source, {
+    ...options,
+    arrayMerge: arrayMergeMode === 'spread' ? arrayMergeSpread : arrayMergeReplace
+  }) as any
+}
 
 // Runtime schema representation using discriminated unions
 export type ObjectSchema = {
@@ -35,11 +190,11 @@ export type ReferenceSchema = {
   reference: string
 }
 
-export type RuntimeSchema = 
-  | ObjectSchema 
-  | ArraySchema 
-  | UnionSchema 
-  | LiteralSchema 
+export type RuntimeSchema =
+  | ObjectSchema
+  | ArraySchema
+  | UnionSchema
+  | LiteralSchema
   | PrimitiveSchema
   | ReferenceSchema
 
@@ -54,6 +209,21 @@ export type UnionMember<T = unknown> = {
   name?: string
 }
 
+// Type to narrow union members based on input compatibility
+export type NarrowUnionMember<Union, Input> = Union extends any
+  ? // Handle primitive literals (string, number, boolean)
+    Union extends string | number | boolean
+    ? Input extends Union
+      ? Union
+      : never
+    : // Handle object types
+      keyof Input extends keyof Union
+      ? Input extends Partial<Union>
+        ? Union
+        : never
+      : never
+  : never
+
 export type CompatibilityResult = {
   compatible: boolean
   score: number
@@ -64,8 +234,8 @@ export type CompatibilityResult = {
 
 export type CompatibilityOptions = {
   optionalPropertyBonus?: number // Extra points for matching optional properties (default: 5)
-  nestedDepthPenalty?: number    // Penalty reduction per nesting level (default: 0.9)
-  incompatiblePenalty?: number   // Penalty for incompatible properties (default: -1000)
+  nestedDepthPenalty?: number // Penalty reduction per nesting level (default: 0.9)
+  incompatiblePenalty?: number // Penalty for incompatible properties (default: -1000)
 }
 
 // Check if data is compatible with schema (boolean result)
@@ -75,7 +245,7 @@ export function isCompatible(schema: RuntimeSchema, data: unknown): boolean {
 
 // Calculate detailed compatibility score
 export function calculateCompatibility(
-  schema: RuntimeSchema, 
+  schema: RuntimeSchema,
   data: unknown,
   options: CompatibilityOptions = {}
 ): CompatibilityResult {
@@ -97,44 +267,49 @@ export function calculateCompatibility(
   switch (schema.type) {
     case 'object':
       return calculateObjectCompatibility(schema, data, opts)
-    
+
     case 'array':
       return calculateArrayCompatibility(schema, data, opts)
-    
+
     case 'union':
       return calculateUnionCompatibility(schema, data, opts)
-    
-    case 'literal':
+
+    case 'literal': {
       const isLiteralMatch = schema.value === data
       return {
         compatible: isLiteralMatch,
         score: isLiteralMatch ? 100 : 0,
         details: isLiteralMatch ? 'Literal match' : `Expected ${schema.value}, got ${data}`
       }
-    
+    }
+
     case 'primitive':
       return calculatePrimitiveCompatibility(schema, data)
-    
+
     case 'reference':
       // For references, we can't check compatibility without the actual type
       // So we assume compatibility and give a neutral score
-      return { compatible: true, score: 50, details: 'Reference type - assumed compatible' }
-    
+      return {
+        compatible: true,
+        score: 50,
+        details: 'Reference type - assumed compatible'
+      }
+
     default:
       return { compatible: false, score: 0, details: 'Unknown schema type' }
   }
 }
 
 function calculateObjectCompatibility(
-  schema: ObjectSchema, 
-  data: unknown, 
+  schema: ObjectSchema,
+  data: unknown,
   options: Required<CompatibilityOptions>
 ): CompatibilityResult {
   if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-    return { 
-      compatible: false, 
-      score: 0, 
-      details: 'Data is not an object' 
+    return {
+      compatible: false,
+      score: 0,
+      details: 'Data is not an object'
     }
   }
 
@@ -143,8 +318,8 @@ function calculateObjectCompatibility(
   const { requiredProperties, optionalProperties, properties } = schema
 
   // Check for incompatible properties (properties in data but not in schema)
-  const incompatibleProperties = dataProps.filter(prop => 
-    !requiredProperties.includes(prop) && !optionalProperties.includes(prop)
+  const incompatibleProperties = dataProps.filter(
+    (prop) => !requiredProperties.includes(prop) && !optionalProperties.includes(prop)
   )
 
   if (incompatibleProperties.length > 0) {
@@ -157,9 +332,7 @@ function calculateObjectCompatibility(
   }
 
   // Check for missing required properties
-  const missingRequiredProperties = requiredProperties.filter(prop => 
-    !(prop in dataObj)
-  )
+  const missingRequiredProperties = requiredProperties.filter((prop) => !(prop in dataObj))
 
   if (missingRequiredProperties.length > 0) {
     return {
@@ -174,7 +347,7 @@ function calculateObjectCompatibility(
   let score = 100 // Base score for compatibility
 
   // Bonus for matching optional properties
-  const matchingOptionalProperties = optionalProperties.filter(prop => prop in dataObj)
+  const matchingOptionalProperties = optionalProperties.filter((prop) => prop in dataObj)
   score += matchingOptionalProperties.length * options.optionalPropertyBonus
 
   // Recursively check nested property compatibility
@@ -182,19 +355,15 @@ function calculateObjectCompatibility(
   for (const prop of dataProps) {
     const propInfo = properties[prop]
     if (propInfo && propInfo.schema) {
-      const nestedResult = calculateCompatibility(
-        propInfo.schema, 
-        dataObj[prop], 
-        {
-          ...options,
-          optionalPropertyBonus: options.optionalPropertyBonus * options.nestedDepthPenalty,
-        }
-      )
-      
+      const nestedResult = calculateCompatibility(propInfo.schema, dataObj[prop], {
+        ...options,
+        optionalPropertyBonus: options.optionalPropertyBonus * options.nestedDepthPenalty
+      })
+
       if (!nestedResult.compatible) {
         nestedCompatible = false
       }
-      
+
       // Reduce score for nested mismatches
       score += nestedResult.score * options.nestedDepthPenalty * 0.1
     }
@@ -208,22 +377,22 @@ function calculateObjectCompatibility(
 }
 
 function calculateArrayCompatibility(
-  schema: ArraySchema, 
-  data: unknown, 
+  schema: ArraySchema,
+  data: unknown,
   options: Required<CompatibilityOptions>
 ): CompatibilityResult {
   if (!Array.isArray(data)) {
-    return { 
-      compatible: false, 
-      score: 0, 
-      details: 'Data is not an array' 
+    return {
+      compatible: false,
+      score: 0,
+      details: 'Data is not an array'
     }
   }
 
   if (schema.tuple) {
     // Tuple: check each element against corresponding schema
     const elementSchemas = Array.isArray(schema.elements) ? schema.elements : []
-    
+
     if (data.length > elementSchemas.length) {
       return {
         compatible: false,
@@ -241,17 +410,13 @@ function calculateArrayCompatibility(
         allCompatible = false
         break
       }
-      
-      const elementResult = calculateCompatibility(
-        elementSchema, 
-        data[i], 
-        options
-      )
-      
+
+      const elementResult = calculateCompatibility(elementSchema, data[i], options)
+
       if (!elementResult.compatible) {
         allCompatible = false
       }
-      
+
       score += elementResult.score * options.nestedDepthPenalty * 0.1
     }
 
@@ -284,76 +449,87 @@ function calculateArrayCompatibility(
 }
 
 function calculateUnionCompatibility(
-  schema: UnionSchema, 
-  data: unknown, 
+  schema: UnionSchema,
+  data: unknown,
   options: Required<CompatibilityOptions>
 ): CompatibilityResult {
-  let bestResult: CompatibilityResult = { compatible: false, score: 0, details: 'No union member matched' }
-  
+  let bestResult: CompatibilityResult = {
+    compatible: false,
+    score: 0,
+    details: 'No union member matched'
+  }
+
   for (const memberSchema of schema.members) {
     const result = calculateCompatibility(memberSchema, data, options)
     if (result.score > bestResult.score) {
       bestResult = result
     }
-    
+
     // Short-circuit if we find a perfect match
     if (result.compatible && result.score >= 100) {
       break
     }
   }
-  
+
   return bestResult
 }
 
 function calculatePrimitiveCompatibility(
-  schema: PrimitiveSchema, 
+  schema: PrimitiveSchema,
   data: unknown
 ): CompatibilityResult {
   const dataType = typeof data
-  
+
   switch (schema.primitiveType) {
-    case 'string':
+    case 'string': {
       const isString = dataType === 'string'
       return {
         compatible: isString,
         score: isString ? 100 : 0,
         details: isString ? 'String match' : `Expected string, got ${dataType}`
       }
-    
-    case 'number':
+    }
+
+    case 'number': {
       const isNumber = dataType === 'number' && !isNaN(data as number)
       return {
         compatible: isNumber,
         score: isNumber ? 100 : 0,
         details: isNumber ? 'Number match' : `Expected number, got ${dataType}`
       }
-    
-    case 'boolean':
+    }
+
+    case 'boolean': {
       const isBoolean = dataType === 'boolean'
       return {
         compatible: isBoolean,
         score: isBoolean ? 100 : 0,
         details: isBoolean ? 'Boolean match' : `Expected boolean, got ${dataType}`
       }
-    
+    }
+
     case 'any':
     case 'unknown':
-      return { compatible: true, score: 100, details: 'Any/unknown type - always compatible' }
-    
+      return {
+        compatible: true,
+        score: 100,
+        details: 'Any/unknown type - always compatible'
+      }
+
     default:
       return { compatible: false, score: 0, details: 'Unknown primitive type' }
   }
 }
 
 // High-level weighted selection for unions
-export function selectFromUnion<T>(
+export function selectFromUnion<T, U>(
   members: UnionMember<T>[],
-  providedData?: unknown,
+  providedData?: U,
   options: {
     fallbackToRandom?: boolean
     minCompatibilityScore?: number
   } = {}
-): T {
+): NarrowUnionMember<T, U> {
   const opts = {
     fallbackToRandom: true,
     minCompatibilityScore: 0,
@@ -370,18 +546,18 @@ export function selectFromUnion<T>(
     if (!selectedMember) {
       throw new Error('Failed to select union member')
     }
-    return selectedMember.generator()
+    return selectedMember.generator() as NarrowUnionMember<T, U>
   }
 
   // Calculate compatibility for each member using union-specific logic
-  const memberScores = members.map(member => ({
+  const memberScores = members.map((member) => ({
     member,
     result: calculateUnionMemberCompatibility(member.schema, providedData)
   }))
 
   // Filter to only compatible members above minimum score
-  const compatibleMembers = memberScores.filter(({ result }) => 
-    result.compatible && result.score >= opts.minCompatibilityScore
+  const compatibleMembers = memberScores.filter(
+    ({ result }) => result.compatible && result.score >= opts.minCompatibilityScore
   )
 
   if (compatibleMembers.length === 0) {
@@ -395,7 +571,7 @@ export function selectFromUnion<T>(
       if (!selectedMember) {
         throw new Error('Failed to select union member')
       }
-      return selectedMember.generator()
+      return selectedMember.generator() as NarrowUnionMember<T, U>
     } else {
       throw new Error('No compatible union members found')
     }
@@ -403,7 +579,7 @@ export function selectFromUnion<T>(
 
   // Select based on weighted probability using scores
   const totalScore = compatibleMembers.reduce((sum, { result }) => sum + result.score, 0)
-  
+
   if (totalScore === 0) {
     // All scores are 0, select randomly from compatible members
     if (compatibleMembers.length === 0) {
@@ -414,7 +590,7 @@ export function selectFromUnion<T>(
     if (!selectedMember) {
       throw new Error('Failed to select compatible member')
     }
-    return selectedMember.member.generator()
+    return selectedMember.member.generator() as NarrowUnionMember<T, U>
   }
 
   // Weighted random selection
@@ -424,7 +600,7 @@ export function selectFromUnion<T>(
   for (const { member, result } of compatibleMembers) {
     currentSum += result.score
     if (randomValue <= currentSum) {
-      return member.generator()
+      return member.generator() as NarrowUnionMember<T, U>
     }
   }
 
@@ -433,7 +609,7 @@ export function selectFromUnion<T>(
   if (!fallbackMember) {
     throw new Error('No fallback member available')
   }
-  return fallbackMember.member.generator()
+  return fallbackMember.member.generator() as NarrowUnionMember<T, U>
 }
 
 // Specialized compatibility for union member selection
@@ -455,33 +631,42 @@ export function calculateUnionMemberCompatibility(
     if (schema.type === 'literal' && (schema.value === null || schema.value === undefined)) {
       return { compatible: true, score: 100 }
     }
-    return { compatible: true, score: 50, details: 'No data provided - can be extended' }
+    return {
+      compatible: true,
+      score: 50,
+      details: 'No data provided - can be extended'
+    }
   }
 
   switch (schema.type) {
     case 'object':
       return calculateObjectUnionCompatibility(schema, data, opts)
-    
+
     case 'array':
       return calculateArrayCompatibility(schema, data, opts)
-    
+
     case 'union':
       return calculateUnionCompatibility(schema, data, opts)
-    
-    case 'literal':
+
+    case 'literal': {
       const isLiteralMatch = schema.value === data
       return {
         compatible: isLiteralMatch,
         score: isLiteralMatch ? 100 : 0,
         details: isLiteralMatch ? 'Literal match' : `Expected ${schema.value}, got ${data}`
       }
-    
+    }
+
     case 'primitive':
       return calculatePrimitiveCompatibility(schema, data)
-    
+
     case 'reference':
-      return { compatible: true, score: 50, details: 'Reference type - assumed compatible' }
-    
+      return {
+        compatible: true,
+        score: 50,
+        details: 'Reference type - assumed compatible'
+      }
+
     default:
       return { compatible: false, score: 0, details: 'Unknown schema type' }
   }
@@ -493,10 +678,10 @@ function calculateObjectUnionCompatibility(
   options: Required<CompatibilityOptions>
 ): CompatibilityResult {
   if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-    return { 
-      compatible: false, 
-      score: 0, 
-      details: 'Data is not an object' 
+    return {
+      compatible: false,
+      score: 0,
+      details: 'Data is not an object'
     }
   }
 
@@ -505,8 +690,8 @@ function calculateObjectUnionCompatibility(
   const { requiredProperties, optionalProperties, properties } = schema
 
   // Check for incompatible properties (properties in data but not in schema)
-  const incompatibleProperties = dataProps.filter(prop => 
-    !requiredProperties.includes(prop) && !optionalProperties.includes(prop)
+  const incompatibleProperties = dataProps.filter(
+    (prop) => !requiredProperties.includes(prop) && !optionalProperties.includes(prop)
   )
 
   if (incompatibleProperties.length > 0) {
@@ -525,11 +710,11 @@ function calculateObjectUnionCompatibility(
   let score = 100 // Base score for compatibility
 
   // Bonus for matching required properties
-  const matchingRequiredProperties = requiredProperties.filter(prop => prop in dataObj)
+  const matchingRequiredProperties = requiredProperties.filter((prop) => prop in dataObj)
   score += matchingRequiredProperties.length * 10 // Higher bonus for required props
 
   // Bonus for matching optional properties
-  const matchingOptionalProperties = optionalProperties.filter(prop => prop in dataObj)
+  const matchingOptionalProperties = optionalProperties.filter((prop) => prop in dataObj)
   score += matchingOptionalProperties.length * options.optionalPropertyBonus
 
   // Big bonus for perfect matches (all required properties provided)
@@ -546,20 +731,16 @@ function calculateObjectUnionCompatibility(
   for (const prop of dataProps) {
     const propInfo = properties[prop]
     if (propInfo && propInfo.schema) {
-      const nestedResult = calculateUnionMemberCompatibility(
-        propInfo.schema, 
-        dataObj[prop], 
-        {
-          ...options,
-          optionalPropertyBonus: options.optionalPropertyBonus * options.nestedDepthPenalty,
-        }
-      )
-      
+      const nestedResult = calculateUnionMemberCompatibility(propInfo.schema, dataObj[prop], {
+        ...options,
+        optionalPropertyBonus: options.optionalPropertyBonus * options.nestedDepthPenalty
+      })
+
       if (!nestedResult.compatible) {
         typesCompatible = false
         break
       }
-      
+
       // Small bonus for nested compatibility (but don't let it dominate the score)
       score += Math.min(nestedResult.score * 0.01, 2)
     }
