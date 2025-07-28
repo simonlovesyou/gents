@@ -938,7 +938,17 @@ export const generators: Generators = {
       // Return selectFromUnion call
       return factory.createCallExpression(selectFromUnionImport, undefined, [
         unionMembersArray,
-        providedDataParam
+        providedDataParam,
+        factory.createObjectLiteralExpression([
+          factory.createPropertyAssignment(
+            factory.createIdentifier('seed'),
+            factory.createPropertyAccessChain(
+              factory.createIdentifier('options'),
+              factory.createToken(SyntaxKind.QuestionDotToken),
+              factory.createIdentifier('seed')
+            )
+          )
+        ])
       ])
     }
   }
